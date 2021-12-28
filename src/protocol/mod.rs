@@ -17,6 +17,9 @@ pub enum ProtocolError {
     #[error("string contains non-UTF8 characters")]
     InvalidString(#[from] FromUtf8Error),
 
+    #[error("packet with id={0} does not exist")]
+    InvalidPacketId(i32),
+
     #[error("failed to read from buffer")]
     Io(#[from] std::io::Error),
 }

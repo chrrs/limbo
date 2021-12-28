@@ -1,15 +1,14 @@
 use std::{
-    io::{Cursor, Read, Write},
+    io::{Cursor, Read},
     net::TcpListener,
 };
 
 use anyhow::{Context, Result};
 use protocol::{Readable, VarInt};
 
-use crate::protocol::{
-    info::{Motd, PlayerInfo, ServerInfo, VERSION},
-    packets::{client::handshake::ClientHandshakePacket, server::status::ServerResponsePacket},
-    Writable,
+use crate::protocol::packets::{
+    client::{handshake::ClientHandshakePacket, ClientPacket},
+    State,
 };
 
 mod protocol;
@@ -20,7 +19,6 @@ fn main() -> Result<()> {
     for stream in listener.incoming() {
         let mut stream = stream?;
 
-        let mut status = false;
         loop {
             let mut buffer = [0; 5];
             stream
@@ -39,38 +37,7 @@ fn main() -> Result<()> {
             let mut cursor = Cursor::new(&buffer[..]);
             cursor.set_position(length_cursor.position());
 
-            let packet_id = VarInt::read_from(&mut cursor).context("failed to read packet id")?;
-
-            match packet_id.0 {
-                0 if status => {
-                    println!("request packet received");
-
-                    let mut buffer = Vec::new();
-                    let packet = ServerResponsePacket {
-                        response: serde_json::to_string(&ServerInfo::new(
-                            VERSION,
-                            PlayerInfo::simple(10, 10),
-                            Motd::new("Limbo".into()),
-                        ))?,
-                    };
-
-                    VarInt(0).write_to(&mut buffer)?;
-                    packet.write_to(&mut buffer)?;
-
-                    let mut result = Vec::new();
-                    VarInt(buffer.len() as i32).write_to(&mut result)?;
-                    result.append(&mut buffer);
-
-                    stream.write_all(&result)?;
-                }
-                0 => {
-                    let packet = ClientHandshakePacket::read_from(&mut cursor)
-                        .context("failed to read handshake packet")?;
-                    println!("{:?}", packet);
-                    status = packet.next_state.0 == 1;
-                }
-                _ => println!("unrecognized packet with id {}", packet_id),
-            }
+            println!("{:?}", ClientPacket::decode(State::Handshake, &mut cursor));
         }
     }
 
