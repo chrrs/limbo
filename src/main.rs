@@ -6,6 +6,8 @@ use std::{
 use anyhow::{Context, Result};
 use protocol::{Readable, VarInt};
 
+use crate::protocol::packets::client::handshake::ClientHandshakePacket;
+
 mod protocol;
 
 fn main() -> Result<()> {
@@ -32,12 +34,10 @@ fn main() -> Result<()> {
         cursor.set_position(length_cursor.position());
 
         let packet_id = VarInt::read_from(&mut cursor).context("failed to read packet id")?;
-        let protocol_version =
-            VarInt::read_from(&mut cursor).context("failed to read protocol version")?;
-
         println!(
-            "{}: protocol version {} (length: {})",
-            packet_id, protocol_version, length
+            "{}: {:?}",
+            packet_id,
+            ClientHandshakePacket::read_from(&mut cursor)
         );
     }
 

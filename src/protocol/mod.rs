@@ -5,6 +5,7 @@ use thiserror::Error;
 pub use variable::*;
 
 mod io;
+pub mod packets;
 mod variable;
 
 #[derive(Error, Debug)]
