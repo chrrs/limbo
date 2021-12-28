@@ -36,16 +36,17 @@ impl Readable for VarInt {
 
 impl Writable for VarInt {
     fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), ProtocolError> {
-        let mut value = self.0;
+        let mut value = self.0 as u32;
 
         loop {
-            if (value & 0x80) == 0 {
-                buffer.push(value as u8);
-                break Ok(());
-            }
-
-            buffer.push(((value & 0x7f) | 0x80) as u8);
+            let part = value as u8;
             value >>= 7;
+            if value == 0 {
+                buffer.push(part as u8 & 0x7f);
+                break Ok(());
+            } else {
+                buffer.push(part as u8 | 0x80);
+            }
         }
     }
 }
