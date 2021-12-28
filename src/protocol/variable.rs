@@ -1,10 +1,17 @@
-use std::io::Cursor;
+use std::{fmt::Display, io::Cursor};
 
 use byteorder::ReadBytesExt;
 
 use super::{Error, Readable, Writable};
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VarInt(pub i32);
+
+impl Display for VarInt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl Readable for VarInt {
     fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Self, Error> {
