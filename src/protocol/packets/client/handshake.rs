@@ -1,4 +1,4 @@
-use crate::protocol::VarInt;
+use crate::protocol::{packets::State, VarInt};
 
 packet! {
     #[derive(Debug)]
@@ -7,7 +7,7 @@ packet! {
             protocol_version: VarInt,
             server_address: String,
             server_port: u16,
-            next_state: VarInt,
+            next_state: State,
         },
     }
 }

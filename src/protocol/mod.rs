@@ -4,6 +4,31 @@ use thiserror::Error;
 
 pub use variable::*;
 
+macro_rules! packet_enum {
+    {
+        $(#[$meta:meta])*
+        $vis:vis enum $name:ident: $super:ident {
+            $($variant:ident = $id:expr),*
+            $(,)?
+        }
+    } => {
+        $(#[$meta])*
+        $vis enum $name {
+            $($variant),*
+        }
+
+        impl crate::protocol::Readable for $name {
+            fn read_from(buffer: &mut std::io::Cursor<&[u8]>) -> Result<Self, crate::protocol::ProtocolError> {
+                let value = $super::read_from(buffer)?;
+                match value.into() {
+                    $($id => Ok(Self::$variant),)*
+                    _ => Err(crate::protocol::ProtocolError::InvalidEnumVariant)
+                }
+            }
+        }
+    };
+}
+
 pub mod info;
 mod io;
 pub mod packets;
@@ -19,6 +44,9 @@ pub enum ProtocolError {
 
     #[error("packet with id={0} does not exist")]
     InvalidPacketId(i32),
+
+    #[error("enum variant with id does not exist")]
+    InvalidEnumVariant,
 
     #[error("failed to read from buffer")]
     Io(#[from] std::io::Error),

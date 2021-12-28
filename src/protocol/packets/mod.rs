@@ -1,3 +1,5 @@
+use super::VarInt;
+
 macro_rules! packet {
     {
         $(#[$meta:meta])*
@@ -37,12 +39,14 @@ macro_rules! packet {
     };
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum State {
-    Handshake,
-    Status,
-    Login,
-    Play,
+packet_enum! {
+    #[derive(Debug, Clone, Copy)]
+    pub enum State: VarInt {
+        Handshake = 0,
+        Status = 1,
+        Login = 2,
+        Play = 3,
+    }
 }
 
 pub mod client;

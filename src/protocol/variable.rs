@@ -7,6 +7,12 @@ use super::{ProtocolError, Readable, Writable};
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VarInt(pub i32);
 
+impl From<VarInt> for i32 {
+    fn from(var: VarInt) -> i32 {
+        var.0
+    }
+}
+
 impl Display for VarInt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
