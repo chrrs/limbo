@@ -4,6 +4,7 @@ use thiserror::Error;
 
 pub use variable::*;
 
+pub mod info;
 mod io;
 pub mod packets;
 mod variable;

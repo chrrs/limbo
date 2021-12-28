@@ -7,6 +7,7 @@ use anyhow::{Context, Result};
 use protocol::{Readable, VarInt};
 
 use crate::protocol::{
+    info::{Motd, PlayerInfo, ServerInfo, VERSION},
     packets::{client::handshake::ClientHandshakePacket, server::status::ServerResponsePacket},
     Writable,
 };
@@ -46,28 +47,11 @@ fn main() -> Result<()> {
 
                     let mut buffer = Vec::new();
                     let packet = ServerResponsePacket {
-                        response: r#"
-                        {
-                            "version": {
-                                "name": "1.18.1",
-                                "protocol": 757
-                            },
-                            "players": {
-                                "max": 10,
-                                "online": 12,
-                                "sample": [
-                                    {
-                                        "name": "thinkofdeath",
-                                        "id": "4566e69f-c907-48ee-8d71-d7ba5aa00d20"
-                                    }
-                                ]
-                            },
-                            "description": {
-                                "text": "Hello world"
-                            }
-                        }
-                        "#
-                        .to_string(),
+                        response: serde_json::to_string(&ServerInfo::new(
+                            VERSION,
+                            PlayerInfo::simple(10, 10),
+                            Motd::new("Limbo".into()),
+                        ))?,
                     };
 
                     VarInt(0).write_to(&mut buffer)?;
