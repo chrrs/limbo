@@ -38,11 +38,11 @@ macro_rules! packet {
         }
 
         impl crate::protocol::Writable for $name {
-            fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), crate::protocol::ProtocolError> {
+            fn write_to(&self, _buffer: &mut Vec<u8>) -> Result<(), crate::protocol::ProtocolError> {
                 match self {
                     $(
                         Self::$packet { $($field),* } => {
-                            $($field.write_to(buffer)?;)*
+                            $($field.write_to(_buffer)?;)*
                             Ok(())
                         },
                     )*
@@ -63,4 +63,4 @@ packet_enum! {
 }
 
 pub mod client;
-// pub mod server;
+pub mod server;

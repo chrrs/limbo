@@ -1,6 +1,8 @@
-use limbo_derive::Packet;
-
-#[derive(Packet)]
-pub struct ServerResponsePacket {
-    pub response: String,
+packet! {
+    #[derive(Debug)]
+    pub enum ServerStatusPacket {
+        0x00 = Response {
+            response: String,
+        },
+    }
 }
