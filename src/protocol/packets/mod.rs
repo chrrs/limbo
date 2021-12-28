@@ -36,16 +36,29 @@ macro_rules! packet {
                 }
             }
         }
+
+        impl crate::protocol::Writable for $name {
+            fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), crate::protocol::ProtocolError> {
+                match self {
+                    $(
+                        Self::$packet { $($field),* } => {
+                            $($field.write_to(buffer)?;)*
+                            Ok(())
+                        },
+                    )*
+                }
+            }
+        }
     };
 }
 
 packet_enum! {
     #[derive(Debug, Clone, Copy)]
     pub enum State: VarInt {
-        Handshake = 0,
-        Status = 1,
-        Login = 2,
-        Play = 3,
+        Handshake = VarInt(0),
+        Status = VarInt(1),
+        Login = VarInt(2),
+        Play = VarInt(3),
     }
 }
 

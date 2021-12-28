@@ -8,7 +8,7 @@ macro_rules! packet_enum {
     {
         $(#[$meta:meta])*
         $vis:vis enum $name:ident: $super:ident {
-            $($variant:ident = $id:expr),*
+            $($variant:ident = $id:ident$(($arg:expr))?),*
             $(,)?
         }
     } => {
@@ -20,9 +20,17 @@ macro_rules! packet_enum {
         impl crate::protocol::Readable for $name {
             fn read_from(buffer: &mut std::io::Cursor<&[u8]>) -> Result<Self, crate::protocol::ProtocolError> {
                 let value = $super::read_from(buffer)?;
-                match value.into() {
-                    $($id => Ok(Self::$variant),)*
+                match value {
+                    $($id$(($arg))? => Ok(Self::$variant),)*
                     _ => Err(crate::protocol::ProtocolError::InvalidEnumVariant)
+                }
+            }
+        }
+
+        impl crate::protocol::Writable for $name {
+            fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), crate::protocol::ProtocolError> {
+                match self {
+                    $(Self::$variant => Ok($id$(($arg))?.write_to(buffer)?),)*
                 }
             }
         }
