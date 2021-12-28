@@ -20,8 +20,17 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "byteorder",
+ "limbo-derive",
  "paste",
  "thiserror",
+]
+
+[[package]]
+name = "limbo-derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]

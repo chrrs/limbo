@@ -3,8 +3,11 @@ name = "limbo"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+
 [dependencies]
 thiserror = "1.0.30"
 anyhow = "1.0.52"
 byteorder = "1.4.3"
 paste = "1.0.6"
+limbo-derive = { path = "derive" }
