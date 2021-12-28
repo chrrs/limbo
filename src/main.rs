@@ -6,10 +6,7 @@ use std::{
 use anyhow::{Context, Result};
 use protocol::{Readable, VarInt};
 
-use crate::protocol::packets::{
-    client::{handshake::ClientHandshakePacket, ClientPacket},
-    State,
-};
+use crate::protocol::packets::{client::ClientPacket, State};
 
 mod protocol;
 
