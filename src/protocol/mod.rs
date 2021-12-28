@@ -8,7 +8,7 @@ mod io;
 mod variable;
 
 #[derive(Error, Debug)]
-pub enum Error {
+pub enum ProtocolError {
     #[error("variable-length number too large")]
     VariableTooLarge,
 
@@ -16,13 +16,13 @@ pub enum Error {
     InvalidString(#[from] FromUtf8Error),
 
     #[error("failed to read from buffer")]
-    IoError(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
 }
 
 pub trait Readable: Sized {
-    fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Self, Error>;
+    fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Self, ProtocolError>;
 }
 
 pub trait Writable {
-    fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), Error>;
+    fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), ProtocolError>;
 }

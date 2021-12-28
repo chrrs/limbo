@@ -2,7 +2,7 @@ use std::{fmt::Display, io::Cursor};
 
 use byteorder::ReadBytesExt;
 
-use super::{Error, Readable, Writable};
+use super::{ProtocolError, Readable, Writable};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VarInt(pub i32);
@@ -14,7 +14,7 @@ impl Display for VarInt {
 }
 
 impl Readable for VarInt {
-    fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Self, Error> {
+    fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Self, ProtocolError> {
         let mut value = 0;
         let mut length = 0;
 
@@ -24,7 +24,7 @@ impl Readable for VarInt {
             length += 1;
 
             if length > 5 {
-                break Err(Error::VariableTooLarge);
+                break Err(ProtocolError::VariableTooLarge);
             }
 
             if (byte & 0x80) == 0 {
@@ -35,7 +35,7 @@ impl Readable for VarInt {
 }
 
 impl Writable for VarInt {
-    fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
+    fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), ProtocolError> {
         let mut value = self.0;
 
         loop {
