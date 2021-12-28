@@ -8,18 +8,19 @@ pub struct VarInt(pub i32);
 
 impl Readable for VarInt {
     fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Self, Error> {
-        let mut value: i32 = 0;
+        let mut value = 0;
         let mut length = 0;
 
         loop {
-            value |= ((buffer.read_u8()? & 0x7f) as i32) << (length * 7);
+            let byte = buffer.read_u8()?;
+            value |= ((byte & 0x7f) as i32) << (length * 7);
             length += 1;
 
             if length > 5 {
                 break Err(Error::VariableTooLarge);
             }
 
-            if (value & 0x80) == 0 {
+            if (byte & 0x80) == 0 {
                 break Ok(VarInt(value));
             }
         }
