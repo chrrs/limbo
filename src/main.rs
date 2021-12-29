@@ -1,7 +1,13 @@
 use connection::Connection;
 use tokio::net::TcpListener;
 
-use crate::protocol::packets::State;
+use crate::protocol::{
+    info::{Motd, PlayerInfo, ServerInfo, VERSION},
+    packets::{
+        server::{status::ServerStatusPacket, ServerPacket},
+        State,
+    },
+};
 
 mod connection;
 mod protocol;
@@ -16,9 +22,20 @@ async fn main() -> anyhow::Result<()> {
         tokio::spawn(async move {
             let mut connection = Connection::new(stream);
             println!("- new connection made");
-            println!("{:?}", connection.read_packet().await);
+            println!("received {:?}", connection.read_packet().await);
             connection.state = State::Status;
-            println!("{:?}", connection.read_packet().await);
+            println!("received {:?}", connection.read_packet().await);
+
+            let packet = ServerPacket::Status(ServerStatusPacket::Response {
+                response: serde_json::to_string(&ServerInfo::new(
+                    VERSION,
+                    PlayerInfo::simple(12, 20),
+                    Motd::new("Limbo".into()),
+                ))
+                .unwrap(),
+            });
+            println!("sent {:?}", packet);
+            connection.write_packet(packet).await.unwrap();
         });
     }
 }

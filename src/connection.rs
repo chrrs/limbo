@@ -1,15 +1,19 @@
 use std::io::Cursor;
 
 use bytes::{Buf, BytesMut};
-use tokio::{io::AsyncReadExt, net::TcpStream};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt, BufWriter},
+    net::TcpStream,
+};
 
 use crate::protocol::{
     packets::{client::ClientPacket, server::ServerPacket, State},
-    Readable, VarInt,
+    Readable, VarInt, Writable,
 };
 
 pub struct Connection {
-    stream: TcpStream,
+    stream: BufWriter<TcpStream>,
+    packet_buf: Vec<u8>,
     buffer: BytesMut,
     pub state: State,
 }
@@ -17,7 +21,8 @@ pub struct Connection {
 impl Connection {
     pub fn new(stream: TcpStream) -> Connection {
         Connection {
-            stream,
+            stream: BufWriter::new(stream),
+            packet_buf: Vec::new(),
             buffer: BytesMut::new(),
             state: State::Handshake,
         }
@@ -55,12 +60,25 @@ impl Connection {
         };
 
         self.buffer.advance(offset);
-        let mut buf = Cursor::new(&self.buffer[0..length]);
+        let mut buf = Cursor::new(&self.buffer[..length]);
         let packet = ClientPacket::decode(self.state, &mut buf)?;
         self.buffer.advance(length);
 
         Ok(Some(packet))
     }
 
-    pub async fn write_packet(&mut self, packet: ServerPacket) {}
+    pub async fn write_packet(&mut self, packet: ServerPacket) -> anyhow::Result<()> {
+        packet.encode_to(&mut self.packet_buf)?;
+        let length = self.packet_buf.len();
+        VarInt(length as i32).write_to(&mut self.packet_buf)?;
+
+        self.stream.write_all(&self.packet_buf[length..]).await?;
+        self.stream.write_all(&self.packet_buf[..length]).await?;
+
+        self.packet_buf.clear();
+
+        self.stream.flush().await?;
+
+        Ok(())
+    }
 }
