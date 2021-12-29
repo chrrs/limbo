@@ -1,4 +1,4 @@
-use serde_derive::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub const VERSION: VersionInfo = VersionInfo {
     name: "1.18.1",
