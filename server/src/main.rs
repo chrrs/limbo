@@ -1,16 +1,14 @@
 use connection::Connection;
-use tokio::net::TcpListener;
-
-use crate::protocol::{
+use protocol::{
     info::{Motd, PlayerInfo, ServerInfo, VERSION},
     packets::{
         server::{status::ServerStatusPacket, ServerPacket},
         State,
     },
 };
+use tokio::net::TcpListener;
 
 mod connection;
-mod protocol;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

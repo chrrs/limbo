@@ -1,14 +1,13 @@
 use std::io::Cursor;
 
 use bytes::{Buf, BytesMut};
+use protocol::{
+    packets::{client::ClientPacket, server::ServerPacket, State},
+    Readable, VarInt, Writable,
+};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufWriter},
     net::TcpStream,
-};
-
-use crate::protocol::{
-    packets::{client::ClientPacket, server::ServerPacket, State},
-    Readable, VarInt, Writable,
 };
 
 pub struct Connection {

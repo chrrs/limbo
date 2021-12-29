@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::protocol::{ProtocolError, Writable};
+use crate::{ProtocolError, Writable};
 
 use self::status::ServerStatusPacket;
 

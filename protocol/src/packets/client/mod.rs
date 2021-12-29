@@ -1,6 +1,6 @@
 use std::io::Cursor;
 
-use crate::protocol::{ProtocolError, Readable};
+use crate::{ProtocolError, Readable};
 
 use self::handshake::ClientHandshakePacket;
 use self::status::ClientStatusPacket;

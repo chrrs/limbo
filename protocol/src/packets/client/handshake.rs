@@ -1,4 +1,4 @@
-use crate::protocol::{packets::State, VarInt};
+use crate::{packets::State, VarInt};
 
 packet! {
     #[derive(Debug)]

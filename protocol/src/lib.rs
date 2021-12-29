@@ -29,9 +29,9 @@ macro_rules! packet {
             ),*
         }
 
-        impl crate::protocol::Readable for $name {
-            fn read_from(buffer: &mut std::io::Cursor<&[u8]>) -> Result<Self, crate::protocol::ProtocolError> {
-                match crate::protocol::VarInt::read_from(buffer)?.0 {
+        impl crate::Readable for $name {
+            fn read_from(buffer: &mut std::io::Cursor<&[u8]>) -> Result<Self, crate::ProtocolError> {
+                match crate::VarInt::read_from(buffer)?.0 {
                     $(
                         $id => Ok(Self::$packet {
                             $(
@@ -39,17 +39,17 @@ macro_rules! packet {
                             )*
                         }),
                     )*
-                    id => Err(crate::protocol::ProtocolError::InvalidPacketId(id)),
+                    id => Err(crate::ProtocolError::InvalidPacketId(id)),
                 }
             }
         }
 
-        impl crate::protocol::Writable for $name {
-            fn write_to(&self, buffer: &mut dyn std::io::Write) -> Result<(), crate::protocol::ProtocolError> {
+        impl crate::Writable for $name {
+            fn write_to(&self, buffer: &mut dyn std::io::Write) -> Result<(), crate::ProtocolError> {
                 match self {
                     $(
                         Self::$packet { $($field),* } => {
-                            crate::protocol::VarInt($id).write_to(buffer)?;
+                            crate::VarInt($id).write_to(buffer)?;
                             $($field.write_to(buffer)?;)*
                             Ok(())
                         },
@@ -73,18 +73,18 @@ macro_rules! packet_enum {
             $($variant),*
         }
 
-        impl crate::protocol::Readable for $name {
-            fn read_from(buffer: &mut std::io::Cursor<&[u8]>) -> Result<Self, crate::protocol::ProtocolError> {
+        impl crate::Readable for $name {
+            fn read_from(buffer: &mut std::io::Cursor<&[u8]>) -> Result<Self, crate::ProtocolError> {
                 let value = $super::read_from(buffer)?;
                 match value {
                     $($id$(($arg))? => Ok(Self::$variant),)*
-                    _ => Err(crate::protocol::ProtocolError::InvalidEnumVariant)
+                    _ => Err(crate::ProtocolError::InvalidEnumVariant)
                 }
             }
         }
 
-        impl crate::protocol::Writable for $name {
-            fn write_to(&self, buffer: &mut dyn std::io::Write) -> Result<(), crate::protocol::ProtocolError> {
+        impl crate::Writable for $name {
+            fn write_to(&self, buffer: &mut dyn std::io::Write) -> Result<(), crate::ProtocolError> {
                 match self {
                     $(Self::$variant => Ok($id$(($arg))?.write_to(buffer)?),)*
                 }
