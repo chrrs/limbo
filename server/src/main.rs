@@ -25,12 +25,11 @@ async fn main() -> anyhow::Result<()> {
             println!("received {:?}", connection.read_packet().await);
 
             let packet = ServerPacket::Status(ServerStatusPacket::Response {
-                response: serde_json::to_string(&ServerInfo::new(
+                response: ServerInfo::new(
                     VERSION,
                     PlayerInfo::simple(12, -1),
                     Motd::new("Limbo".into()),
-                ))
-                .unwrap(),
+                ),
             });
             println!("sent {:?}", packet);
             connection.write_packet(packet).await.unwrap();

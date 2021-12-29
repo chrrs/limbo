@@ -8,4 +8,3 @@ anyhow = "1.0.52"
 tokio = { version = "1.15.0", features = ["full"] }
 protocol = { path = "../protocol" }
 bytes = "1.1.0"
-serde_json = "1.0.73"

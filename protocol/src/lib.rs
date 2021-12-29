@@ -112,6 +112,9 @@ pub enum ProtocolError {
     #[error("enum variant with id does not exist")]
     InvalidEnumVariant,
 
+    #[error("failed to process json contents")]
+    Json(#[from] serde_json::Error),
+
     #[error("failed to read from buffer")]
     Io(#[from] std::io::Error),
 }
