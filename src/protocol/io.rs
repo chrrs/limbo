@@ -1,4 +1,4 @@
-use std::io::{Cursor, Read};
+use std::io::{Cursor, Read, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use paste::paste;
@@ -15,9 +15,9 @@ impl Readable for String {
 }
 
 impl Writable for String {
-    fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), ProtocolError> {
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
         VarInt(self.len() as i32).write_to(buffer)?;
-        buffer.extend(self.bytes());
+        buffer.write_all(self.as_bytes())?;
         Ok(())
     }
 }
@@ -33,7 +33,7 @@ macro_rules! impl_int {
                 }
 
                 impl Writable for $typ {
-                    fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), ProtocolError> {
+                    fn write_to(&self, buffer: &mut dyn std::io::Write) -> Result<(), ProtocolError> {
                         Ok(buffer.[<write_ $typ>]::<BigEndian>(*self)?)
                     }
                 }
@@ -51,7 +51,7 @@ impl Readable for u8 {
 }
 
 impl Writable for u8 {
-    fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), ProtocolError> {
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
         Ok(buffer.write_u8(*self)?)
     }
 }
@@ -63,7 +63,7 @@ impl Readable for i8 {
 }
 
 impl Writable for i8 {
-    fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), ProtocolError> {
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
         Ok(buffer.write_i8(*self)?)
     }
 }

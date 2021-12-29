@@ -1,6 +1,9 @@
-use std::{fmt::Display, io::Cursor};
+use std::{
+    fmt::Display,
+    io::{Cursor, Write},
+};
 
-use byteorder::ReadBytesExt;
+use byteorder::{ReadBytesExt, WriteBytesExt};
 
 use super::{ProtocolError, Readable, Writable};
 
@@ -35,17 +38,17 @@ impl Readable for VarInt {
 }
 
 impl Writable for VarInt {
-    fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), ProtocolError> {
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
         let mut value = self.0 as u32;
 
         loop {
             let part = value as u8;
             value >>= 7;
             if value == 0 {
-                buffer.push(part as u8 & 0x7f);
+                buffer.write_u8(part as u8 & 0x7f)?;
                 break Ok(());
             } else {
-                buffer.push(part as u8 | 0x80);
+                buffer.write_u8(part as u8 | 0x80)?;
             }
         }
     }

@@ -1,4 +1,7 @@
-use std::{io::Cursor, string::FromUtf8Error};
+use std::{
+    io::{Cursor, Write},
+    string::FromUtf8Error,
+};
 
 use thiserror::Error;
 
@@ -42,7 +45,7 @@ macro_rules! packet {
         }
 
         impl crate::protocol::Writable for $name {
-            fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), crate::protocol::ProtocolError> {
+            fn write_to(&self, buffer: &mut dyn std::io::Write) -> Result<(), crate::protocol::ProtocolError> {
                 match self {
                     $(
                         Self::$packet { $($field),* } => {
@@ -81,7 +84,7 @@ macro_rules! packet_enum {
         }
 
         impl crate::protocol::Writable for $name {
-            fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), crate::protocol::ProtocolError> {
+            fn write_to(&self, buffer: &mut dyn std::io::Write) -> Result<(), crate::protocol::ProtocolError> {
                 match self {
                     $(Self::$variant => Ok($id$(($arg))?.write_to(buffer)?),)*
                 }
@@ -118,5 +121,5 @@ pub trait Readable: Sized {
 }
 
 pub trait Writable {
-    fn write_to(&self, buffer: &mut Vec<u8>) -> Result<(), ProtocolError>;
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError>;
 }
