@@ -29,7 +29,7 @@ async fn main() -> anyhow::Result<()> {
             let packet = ServerPacket::Status(ServerStatusPacket::Response {
                 response: serde_json::to_string(&ServerInfo::new(
                     VERSION,
-                    PlayerInfo::simple(12, 20),
+                    PlayerInfo::simple(12, -1),
                     Motd::new("Limbo".into()),
                 ))
                 .unwrap(),

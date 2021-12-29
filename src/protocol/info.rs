@@ -24,12 +24,12 @@ impl ServerInfo {
 
 #[derive(Serialize)]
 pub struct PlayerInfo {
-    max: usize,
-    online: usize,
+    max: isize,
+    online: isize,
 }
 
 impl PlayerInfo {
-    pub fn simple(online: usize, max: usize) -> PlayerInfo {
+    pub fn simple(online: isize, max: isize) -> PlayerInfo {
         PlayerInfo { online, max }
     }
 }
