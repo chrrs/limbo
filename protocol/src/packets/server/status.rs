@@ -6,5 +6,8 @@ packet! {
         0x00 = Response {
             response: ServerInfo,
         },
+        0x01 = Pong {
+            payload: i64,
+        }
     }
 }

@@ -2,6 +2,7 @@ use connection::Connection;
 use protocol::{
     info::{Motd, PlayerInfo, ServerInfo, VERSION},
     packets::{
+        client::{status::ClientStatusPacket, ClientPacket},
         server::{status::ServerStatusPacket, ServerPacket},
         State,
     },
@@ -24,15 +25,25 @@ async fn main() -> anyhow::Result<()> {
             connection.state = State::Status;
             println!("received {:?}", connection.read_packet().await);
 
-            let packet = ServerPacket::Status(ServerStatusPacket::Response {
-                response: ServerInfo::new(
-                    VERSION,
-                    PlayerInfo::simple(12, -1),
-                    Motd::new("Limbo".into()),
-                ),
-            });
-            println!("sent {:?}", packet);
-            connection.write_packet(packet).await.unwrap();
+            {
+                let packet = ServerPacket::Status(ServerStatusPacket::Response {
+                    response: ServerInfo::new(
+                        VERSION,
+                        PlayerInfo::simple(12, -1),
+                        Motd::new("Limbo".into()),
+                    ),
+                });
+                println!("sent {:?}", packet);
+                connection.write_packet(packet).await.unwrap();
+            }
+
+            let ping = connection.read_packet().await;
+            println!("received {:?}", ping);
+            if let Ok(Some(ClientPacket::Status(ClientStatusPacket::Ping { payload }))) = ping {
+                let packet = ServerPacket::Status(ServerStatusPacket::Pong { payload });
+                println!("sent {:?}", packet);
+                connection.write_packet(packet).await.unwrap();
+            }
         });
     }
 }
