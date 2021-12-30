@@ -6,10 +6,24 @@ use protocol::{
         server::{status::ServerStatusPacket, ServerPacket},
         State,
     },
+    ProtocolError,
 };
+use thiserror::Error;
 use tokio::net::TcpListener;
 
 mod connection;
+
+#[derive(Debug, Error)]
+pub enum ServerError {
+    #[error("connection reset by peer")]
+    ConnectionReset,
+
+    #[error("failed to process packet")]
+    Protocol(#[from] ProtocolError),
+
+    #[error("io error")]
+    Io(#[from] std::io::Error),
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

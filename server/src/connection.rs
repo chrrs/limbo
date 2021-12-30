@@ -10,6 +10,8 @@ use tokio::{
     net::TcpStream,
 };
 
+use crate::ServerError;
+
 pub struct Connection {
     stream: BufWriter<TcpStream>,
     packet_buf: Vec<u8>,
@@ -27,7 +29,7 @@ impl Connection {
         }
     }
 
-    pub async fn read_packet(&mut self) -> anyhow::Result<Option<ClientPacket>> {
+    pub async fn read_packet(&mut self) -> Result<Option<ClientPacket>, ServerError> {
         loop {
             if let Some(packet) = self.parse_packet()? {
                 return Ok(Some(packet));
@@ -37,14 +39,13 @@ impl Connection {
                 if self.buffer.is_empty() {
                     return Ok(None);
                 } else {
-                    // TODO: Properly return an error here.
-                    return Err(anyhow::anyhow!("connection reset by peer"));
+                    return Err(ServerError::ConnectionReset);
                 }
             }
         }
     }
 
-    pub fn parse_packet(&mut self) -> anyhow::Result<Option<ClientPacket>> {
+    pub fn parse_packet(&mut self) -> Result<Option<ClientPacket>, ServerError> {
         let (offset, length) = {
             let mut buf = Cursor::new(&self.buffer[..]);
             if let Ok(length) = VarInt::read_from(&mut buf) {
@@ -66,7 +67,7 @@ impl Connection {
         Ok(Some(packet))
     }
 
-    pub async fn write_packet(&mut self, packet: ServerPacket) -> anyhow::Result<()> {
+    pub async fn write_packet(&mut self, packet: ServerPacket) -> Result<(), ServerError> {
         packet.encode_to(&mut self.packet_buf)?;
         let length = self.packet_buf.len();
         VarInt(length as i32).write_to(&mut self.packet_buf)?;
