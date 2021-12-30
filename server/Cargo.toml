@@ -9,3 +9,5 @@ tokio = { version = "1.15.0", features = ["full"] }
 protocol = { path = "../protocol" }
 bytes = "1.1.0"
 thiserror = "1.0.30"
+log = "0.4.14"
+fern = { version = "0.6.0", features = ["colored"] }

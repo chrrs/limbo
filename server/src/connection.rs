@@ -1,6 +1,7 @@
 use std::io::Cursor;
 
 use bytes::{Buf, BytesMut};
+use log::trace;
 use protocol::{
     packets::{client::ClientPacket, server::ServerPacket, State},
     Readable, VarInt, Writable,
@@ -64,6 +65,10 @@ impl Connection {
         let packet = ClientPacket::decode(self.state, &mut buf);
         self.buffer.advance(length);
 
+        if let Ok(packet) = &packet {
+            trace!("received packet: {:?}", packet);
+        }
+
         Ok(Some(packet?))
     }
 
@@ -78,6 +83,8 @@ impl Connection {
         self.packet_buf.clear();
 
         self.stream.flush().await?;
+
+        trace!("sent packet: {:?}", packet);
 
         Ok(())
     }

@@ -1,3 +1,5 @@
+use anyhow::anyhow;
+use log::{error, warn};
 use protocol::{
     info::{Motd, PlayerInfo, ServerInfo, VERSION},
     packets::{
@@ -27,15 +29,19 @@ impl Client {
             match self.connection.read_packet().await {
                 Ok(Some(packet)) => {
                     if let Err(err) = self.process_packet(packet).await {
-                        println!("error while processing packet: {}", err);
+                        error!("{:#}", anyhow!(err));
+                        self.disconnected = true;
                     }
                 }
                 Ok(None) => self.disconnected = true,
                 Err(ServerError::Protocol(ProtocolError::InvalidPacketId(id))) => {
-                    println!("received invalid packet with id={}", id);
+                    warn!(
+                        "received unrecognized packet ({:?}, id: {:#x})",
+                        self.connection.state, id
+                    );
                 }
                 Err(err) => {
-                    println!("{}", err);
+                    error!("{:#}", anyhow!(err));
                     self.disconnected = true;
                 }
             }
