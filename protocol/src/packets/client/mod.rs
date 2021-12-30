@@ -3,17 +3,20 @@ use std::io::Cursor;
 use crate::{ProtocolError, Readable};
 
 use self::handshake::ClientHandshakePacket;
+use self::login::ClientLoginPacket;
 use self::status::ClientStatusPacket;
 
 use super::State;
 
 pub mod handshake;
+pub mod login;
 pub mod status;
 
 #[derive(Debug)]
 pub enum ClientPacket {
     Handshake(ClientHandshakePacket),
     Status(ClientStatusPacket),
+    Login(ClientLoginPacket),
 }
 
 impl ClientPacket {
@@ -23,7 +26,7 @@ impl ClientPacket {
                 cursor,
             )?)),
             State::Status => Ok(ClientPacket::Status(ClientStatusPacket::read_from(cursor)?)),
-            State::Login => Err(ProtocolError::InvalidPacketId(-1)),
+            State::Login => Ok(ClientPacket::Login(ClientLoginPacket::read_from(cursor)?)),
             State::Play => Err(ProtocolError::InvalidPacketId(-1)),
         }
     }

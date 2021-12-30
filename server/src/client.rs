@@ -1,10 +1,13 @@
 use anyhow::anyhow;
-use log::{error, warn};
+use log::{error, trace, warn};
 use protocol::{
     info::{Motd, PlayerInfo, ServerInfo, VERSION},
     packets::{
-        client::{handshake::ClientHandshakePacket, status::ClientStatusPacket, ClientPacket},
-        server::{status::ServerStatusPacket, ServerPacket},
+        client::{
+            handshake::ClientHandshakePacket, login::ClientLoginPacket, status::ClientStatusPacket,
+            ClientPacket,
+        },
+        server::{login::ServerLoginPacket, status::ServerStatusPacket, ServerPacket},
     },
     ProtocolError,
 };
@@ -71,6 +74,17 @@ impl Client {
                 ClientStatusPacket::Ping { payload } => {
                     let pong = ServerPacket::Status(ServerStatusPacket::Pong { payload });
                     self.connection.write_packet(pong).await?;
+                }
+            },
+            ClientPacket::Login(packet) => match packet {
+                ClientLoginPacket::Start { name } => {
+                    trace!("client logged in with name {}", name);
+
+                    let disconnect = ServerPacket::Login(ServerLoginPacket::Disconnect {
+                        reason: format!("{{ \"text\":\"Your name is {}\" }}", name),
+                    });
+                    self.connection.write_packet(disconnect).await?;
+                    self.disconnected = true;
                 }
             },
         }
