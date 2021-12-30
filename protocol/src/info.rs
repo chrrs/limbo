@@ -66,6 +66,6 @@ impl Motd {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VersionInfo {
-    name: Cow<'static, str>,
-    protocol: usize,
+    pub name: Cow<'static, str>,
+    pub protocol: usize,
 }

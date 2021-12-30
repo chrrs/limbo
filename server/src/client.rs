@@ -73,9 +73,18 @@ impl Client {
     async fn process_packet(&mut self, packet: ClientPacket) -> Result<(), ServerError> {
         match packet {
             ClientPacket::Handshake(packet) => match packet {
-                ClientHandshakePacket::Handshake { next_state, .. } => {
-                    // TODO: Check version if next state is login.
-                    self.connection.state = next_state
+                ClientHandshakePacket::Handshake {
+                    next_state,
+                    protocol_version,
+                    ..
+                } => {
+                    self.connection.state = next_state;
+
+                    if let State::Login = next_state {
+                        if VERSION.protocol != protocol_version.0 as usize {
+                            self.disconnect(&format!("Version mismatch between client and server. Please connect using {}.", VERSION.name)).await?;
+                        }
+                    }
                 }
             },
             ClientPacket::Status(packet) => match packet {
