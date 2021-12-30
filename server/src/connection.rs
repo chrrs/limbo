@@ -61,10 +61,10 @@ impl Connection {
 
         self.buffer.advance(offset);
         let mut buf = Cursor::new(&self.buffer[..length]);
-        let packet = ClientPacket::decode(self.state, &mut buf)?;
+        let packet = ClientPacket::decode(self.state, &mut buf);
         self.buffer.advance(length);
 
-        Ok(Some(packet))
+        Ok(Some(packet?))
     }
 
     pub async fn write_packet(&mut self, packet: ServerPacket) -> Result<(), ServerError> {
