@@ -18,6 +18,8 @@ use crate::{connection::Connection, ServerError};
 pub struct Client {
     connection: Connection,
     disconnected: bool,
+
+    name: Option<String>,
 }
 
 impl Client {
@@ -25,6 +27,8 @@ impl Client {
         Client {
             connection,
             disconnected: false,
+
+            name: None,
         }
     }
 
@@ -94,8 +98,9 @@ impl Client {
             ClientPacket::Login(packet) => match packet {
                 ClientLoginPacket::Start { name } => {
                     trace!("client logged in with name {}", name);
+                    self.name = Some(name);
 
-                    self.disconnect(&format!("Your name is {}", name)).await?;
+                    self.disconnect("Unimplemented").await?;
                 }
             },
         }
@@ -114,8 +119,11 @@ impl Client {
                 });
                 self.connection.write_packet(disconnect).await?;
 
-                // TODO: Include some user specific information in here.
-                info!("disallowed login with reason: {}", reason);
+                if let Some(name) = self.name.as_ref() {
+                    info!("disallowed login for {} with reason: {}", name, reason);
+                } else {
+                    info!("disallowed login with reason: {}", reason);
+                }
             }
             State::Play => todo!(),
             _ => {}
