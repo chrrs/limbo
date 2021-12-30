@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use log::{error, trace, warn};
+use log::{error, info, trace, warn};
 use protocol::{
     info::{Motd, PlayerInfo, ServerInfo, VERSION},
     packets::{
@@ -36,7 +36,7 @@ impl Client {
                         let err = anyhow!(err);
                         error!("failed to process packet: {:#}", err);
 
-                        if let Err(err) = self.disconnect(&format!("bad packet: {}", err)).await {
+                        if let Err(err) = self.disconnect(&format!("Bad packet: {}", err)).await {
                             error!(
                                 "failed to disconnect client after packet error: {:#}",
                                 anyhow!(err)
@@ -55,7 +55,7 @@ impl Client {
                     let err = anyhow!(err);
                     error!("failed to read packet: {:#}", err);
 
-                    if let Err(err) = self.disconnect(&format!("bad packet: {}", err)).await {
+                    if let Err(err) = self.disconnect(&format!("Invalid packet: {}", err)).await {
                         error!(
                             "failed to disconnect client after packet error: {:#}",
                             anyhow!(err)
@@ -113,6 +113,9 @@ impl Client {
                     reason: format!("{{ \"text\":\"{}\" }}", reason),
                 });
                 self.connection.write_packet(disconnect).await?;
+
+                // TODO: Include some user specific information in here.
+                info!("disallowed login with reason: {}", reason);
             }
             State::Play => todo!(),
             _ => {}

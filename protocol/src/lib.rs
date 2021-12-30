@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     io::{Cursor, Write},
     string::FromUtf8Error,
 };
@@ -78,7 +79,7 @@ macro_rules! packet_enum {
                 let value = $super::read_from(buffer)?;
                 match value {
                     $($id$(($arg))? => Ok(Self::$variant),)*
-                    _ => Err(crate::ProtocolError::InvalidEnumVariant)
+                    id => Err(crate::ProtocolError::InvalidEnumVariant { id: std::borrow::Cow::Owned(format!("{:?}", id)), name: std::borrow::Cow::Borrowed(stringify!($name)) })
                 }
             }
         }
@@ -100,22 +101,26 @@ mod variable;
 
 #[derive(Error, Debug)]
 pub enum ProtocolError {
-    #[error("variable-length number too large")]
+    #[error("VarInt or VarLong spanning too many bytes")]
     VariableTooLarge,
 
     #[error("string contains non-UTF8 characters")]
     InvalidString(#[from] FromUtf8Error),
 
-    #[error("packet with id={0} does not exist")]
+    #[error("packet with id {0} not recognized")]
     InvalidPacketId(i32),
 
-    #[error("enum variant with id does not exist")]
-    InvalidEnumVariant,
+    #[error("enum variant with id {id} does not exist for {name}")]
+    InvalidEnumVariant {
+        // TODO: Maybe this should be something else than a string?
+        id: Cow<'static, str>,
+        name: Cow<'static, str>,
+    },
 
-    #[error("failed to process json contents")]
+    #[error("json error")]
     Json(#[from] serde_json::Error),
 
-    #[error("failed to read from buffer")]
+    #[error("io error")]
     Io(#[from] std::io::Error),
 }
 
