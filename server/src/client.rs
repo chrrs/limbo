@@ -8,6 +8,7 @@ use protocol::{
             ClientPacket,
         },
         server::{login::ServerLoginPacket, status::ServerStatusPacket, ServerPacket},
+        State,
     },
     ProtocolError,
 };
@@ -32,8 +33,15 @@ impl Client {
             match self.connection.read_packet().await {
                 Ok(Some(packet)) => {
                     if let Err(err) = self.process_packet(packet).await {
-                        error!("{:#}", anyhow!(err));
-                        self.disconnected = true;
+                        let err = anyhow!(err);
+                        error!("failed to process packet: {:#}", err);
+
+                        if let Err(err) = self.disconnect(&format!("bad packet: {}", err)).await {
+                            error!(
+                                "failed to disconnect client after packet error: {:#}",
+                                anyhow!(err)
+                            )
+                        }
                     }
                 }
                 Ok(None) => self.disconnected = true,
@@ -44,8 +52,15 @@ impl Client {
                     );
                 }
                 Err(err) => {
-                    error!("{:#}", anyhow!(err));
-                    self.disconnected = true;
+                    let err = anyhow!(err);
+                    error!("failed to read packet: {:#}", err);
+
+                    if let Err(err) = self.disconnect(&format!("bad packet: {}", err)).await {
+                        error!(
+                            "failed to disconnect client after packet error: {:#}",
+                            anyhow!(err)
+                        )
+                    }
                 }
             }
         }
@@ -80,13 +95,27 @@ impl Client {
                 ClientLoginPacket::Start { name } => {
                     trace!("client logged in with name {}", name);
 
-                    let disconnect = ServerPacket::Login(ServerLoginPacket::Disconnect {
-                        reason: format!("{{ \"text\":\"Your name is {}\" }}", name),
-                    });
-                    self.connection.write_packet(disconnect).await?;
-                    self.disconnected = true;
+                    self.disconnect(&format!("Your name is {}", name)).await?;
                 }
             },
+        }
+
+        Ok(())
+    }
+
+    async fn disconnect(&mut self, reason: &str) -> Result<(), ServerError> {
+        self.disconnected = true;
+
+        match self.connection.state {
+            State::Login => {
+                let disconnect = ServerPacket::Login(ServerLoginPacket::Disconnect {
+                    // TODO: This should use some global chat message wrapper
+                    reason: format!("{{ \"text\":\"{}\" }}", reason),
+                });
+                self.connection.write_packet(disconnect).await?;
+            }
+            State::Play => todo!(),
+            _ => {}
         }
 
         Ok(())
