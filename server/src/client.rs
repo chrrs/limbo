@@ -1,7 +1,8 @@
 use anyhow::anyhow;
 use log::{error, info, trace, warn};
 use protocol::{
-    info::{Motd, PlayerInfo, ServerInfo, VERSION},
+    chat::Message,
+    info::{PlayerInfo, ServerInfo, VERSION},
     packets::{
         client::{
             handshake::ClientHandshakePacket, login::ClientLoginPacket, status::ClientStatusPacket,
@@ -93,7 +94,7 @@ impl Client {
                         response: ServerInfo::new(
                             VERSION,
                             PlayerInfo::simple(12, -1),
-                            Motd::new("Limbo".into()),
+                            Message::new("Limbo"),
                         ),
                     });
 
@@ -123,8 +124,7 @@ impl Client {
         match self.connection.state {
             State::Login => {
                 let disconnect = ServerPacket::Login(ServerLoginPacket::Disconnect {
-                    // TODO: This should use some global chat message wrapper
-                    reason: format!("{{ \"text\":\"{}\" }}", reason),
+                    reason: Message::new(reason.to_string()),
                 });
                 self.connection.write_packet(disconnect).await?;
 

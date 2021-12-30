@@ -94,6 +94,7 @@ macro_rules! packet_enum {
     };
 }
 
+pub mod chat;
 pub mod info;
 mod io;
 pub mod packets;

@@ -5,7 +5,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::{ProtocolError, Readable, Writable};
+use crate::{chat::Message, ProtocolError, Readable, Writable};
 
 pub const VERSION: VersionInfo = VersionInfo {
     name: Cow::Borrowed("1.18.1"),
@@ -16,11 +16,11 @@ pub const VERSION: VersionInfo = VersionInfo {
 pub struct ServerInfo {
     version: VersionInfo,
     players: PlayerInfo,
-    description: Motd,
+    description: Message,
 }
 
 impl ServerInfo {
-    pub fn new(version: VersionInfo, players: PlayerInfo, motd: Motd) -> ServerInfo {
+    pub fn new(version: VersionInfo, players: PlayerInfo, motd: Message) -> ServerInfo {
         ServerInfo {
             version,
             players,
@@ -50,17 +50,6 @@ pub struct PlayerInfo {
 impl PlayerInfo {
     pub fn simple(online: isize, max: isize) -> PlayerInfo {
         PlayerInfo { online, max }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Motd {
-    text: String,
-}
-
-impl Motd {
-    pub fn new(motd: String) -> Motd {
-        Motd { text: motd }
     }
 }
 
