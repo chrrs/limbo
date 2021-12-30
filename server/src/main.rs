@@ -17,7 +17,7 @@ pub enum ServerError {
     #[error("connection reset by peer")]
     ConnectionReset,
 
-    #[error("failed to process packet")]
+    #[error("protocol error")]
     Protocol(#[from] ProtocolError),
 
     #[error("io error")]
