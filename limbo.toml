@@ -1,0 +1,12 @@
+[server]
+host = "0.0.0.0"
+port = 25565
+# allow_bad_packets = false
+log_level = "info"
+
+[info]
+# hidden = false
+max_players = -1
+motd = "A Limbo Server"
+# name = "Limbo"
+# icon = "icon.png"
