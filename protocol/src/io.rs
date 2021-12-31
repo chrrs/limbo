@@ -122,3 +122,4 @@ impl<T: Writable> Writable for Vec<T> {
 
         Ok(())
     }
+}
