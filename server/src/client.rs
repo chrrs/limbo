@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, sync::Arc};
 
 use anyhow::anyhow;
 use log::{error, info, warn};
@@ -15,11 +15,14 @@ use protocol::{
     },
     ProtocolError,
 };
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::{connection::Connection, ServerError};
+use crate::{config::Config, connection::Connection, ServerError};
 
 pub struct Client {
+    config: Arc<RwLock<Config>>,
+
     connection: Connection,
     disconnected: bool,
 
@@ -28,8 +31,10 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(connection: Connection) -> Client {
+    pub fn new(connection: Connection, config: Arc<RwLock<Config>>) -> Client {
         Client {
+            config,
+
             connection,
             disconnected: false,
 
@@ -95,11 +100,12 @@ impl Client {
             },
             ClientPacket::Status(packet) => match packet {
                 ClientStatusPacket::Request {} => {
+                    let config = self.config.read().await;
                     let response = ServerPacket::Status(ServerStatusPacket::Response {
                         response: ServerInfo::new(
                             VERSION,
-                            PlayerInfo::simple(12, -1),
-                            Message::new("Limbo"),
+                            PlayerInfo::simple(12, config.info.max_players),
+                            Message::new(config.info.motd.clone()),
                         ),
                     });
 

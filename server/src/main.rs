@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 use anyhow::anyhow;
 use client::Client;
@@ -6,7 +6,7 @@ use connection::Connection;
 use log::{debug, info, warn, LevelFilter};
 use protocol::ProtocolError;
 use thiserror::Error;
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, sync::RwLock};
 
 use crate::config::{Config, ConfigError};
 
@@ -62,12 +62,15 @@ async fn main() -> anyhow::Result<()> {
         config.server.host, config.server.port
     );
 
+    let config = Arc::new(RwLock::new(config));
+
     loop {
         let (stream, address) = listener.accept().await?;
         debug!("new connection from {}", address);
 
+        let config = config.clone();
         tokio::spawn(async move {
-            let mut client = Client::new(Connection::new(stream));
+            let mut client = Client::new(Connection::new(stream), config);
             client.run().await;
         });
     }
