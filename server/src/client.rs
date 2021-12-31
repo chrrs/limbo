@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use anyhow::anyhow;
 use log::{error, info, trace, warn};
 use protocol::{
@@ -118,7 +120,7 @@ impl Client {
         Ok(())
     }
 
-    async fn disconnect(&mut self, reason: &str) -> Result<(), ServerError> {
+    async fn disconnect<S: Display + ToString>(&mut self, reason: S) -> Result<(), ServerError> {
         self.disconnected = true;
 
         match self.connection.state {
