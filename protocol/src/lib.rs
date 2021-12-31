@@ -65,7 +65,7 @@ macro_rules! packet_enum {
     {
         $(#[$meta:meta])*
         $vis:vis enum $name:ident: $super:ident {
-            $($variant:ident = $id:ident$(($arg:expr))?),*
+            $($variant:ident = $class:ident ( $arg:expr )),*
             $(,)?
         }
     } => {
@@ -78,7 +78,7 @@ macro_rules! packet_enum {
             fn read_from(buffer: &mut std::io::Cursor<&[u8]>) -> Result<Self, crate::ProtocolError> {
                 let value = $super::read_from(buffer)?;
                 match value {
-                    $($id$(($arg))? => Ok(Self::$variant),)*
+                    $($class($arg) => Ok(Self::$variant),)*
                     id => Err(crate::ProtocolError::InvalidEnumVariant { id: std::borrow::Cow::Owned(format!("{:?}", id)), name: std::borrow::Cow::Borrowed(stringify!($name)) })
                 }
             }
@@ -87,7 +87,38 @@ macro_rules! packet_enum {
         impl crate::Writable for $name {
             fn write_to(&self, buffer: &mut dyn std::io::Write) -> Result<(), crate::ProtocolError> {
                 match self {
-                    $(Self::$variant => Ok($id$(($arg))?.write_to(buffer)?),)*
+                    $(Self::$variant => Ok($class($arg).write_to(buffer)?),)*
+                }
+            }
+        }
+    };
+
+    {
+        $(#[$meta:meta])*
+        $vis:vis enum $name:ident: $super:ident {
+            $($variant:ident = $id:expr),*
+            $(,)?
+        }
+    } => {
+        $(#[$meta])*
+        $vis enum $name {
+            $($variant),*
+        }
+
+        impl crate::Readable for $name {
+            fn read_from(buffer: &mut std::io::Cursor<&[u8]>) -> Result<Self, crate::ProtocolError> {
+                let value = $super::read_from(buffer)?;
+                match value {
+                    $($id => Ok(Self::$variant),)*
+                    id => Err(crate::ProtocolError::InvalidEnumVariant { id: std::borrow::Cow::Owned(format!("{:?}", id)), name: std::borrow::Cow::Borrowed(stringify!($name)) })
+                }
+            }
+        }
+
+        impl crate::Writable for $name {
+            fn write_to(&self, buffer: &mut dyn std::io::Write) -> Result<(), crate::ProtocolError> {
+                match self {
+                    $(Self::$variant => Ok($id.write_to(buffer)?),)*
                 }
             }
         }
