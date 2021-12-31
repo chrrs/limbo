@@ -10,7 +10,10 @@ use protocol::{
             handshake::ClientHandshakePacket, login::ClientLoginPacket, status::ClientStatusPacket,
             ClientPacket,
         },
-        server::{login::ServerLoginPacket, status::ServerStatusPacket, ServerPacket},
+        server::{
+            login::ServerLoginPacket, play::ServerPlayPacket, status::ServerStatusPacket,
+            ServerPacket,
+        },
         State,
     },
     ProtocolError,
@@ -161,12 +164,21 @@ impl Client {
                 self.connection.write_packet(disconnect).await?;
 
                 if let Some(name) = self.name.as_ref() {
-                    info!("disallowed login for {} with reason: {}", name, reason);
+                    info!("disallowed login for {} (reason: {})", name, reason);
                 } else {
-                    info!("disallowed login with reason: {}", reason);
+                    info!("disallowed login (reason: {})", reason);
                 }
             }
-            State::Play => todo!(),
+            State::Play => {
+                let disconnect = ServerPacket::Play(ServerPlayPacket::Disconnect {
+                    reason: Message::new(reason.to_string()),
+                });
+                self.connection.write_packet(disconnect).await?;
+
+                if let Some(name) = self.name.as_ref() {
+                    info!("disconnected {} (reason: {})", name, reason);
+                }
+            }
             _ => {}
         }
 
