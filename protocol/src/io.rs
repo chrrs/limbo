@@ -86,3 +86,15 @@ impl Writable for Uuid {
         Ok(())
     }
 }
+
+impl Readable for bool {
+    fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<bool, ProtocolError> {
+        Ok(u8::read_from(buffer)? != 0)
+    }
+}
+
+impl Writable for bool {
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
+        if *self { 1u8 } else { 0u8 }.write_to(buffer)
+    }
+}
