@@ -1,16 +1,13 @@
 use client::Client;
 use connection::Connection;
-use fern::{
-    colors::{Color, ColoredLevelConfig},
-    Dispatch,
-};
-use log::{debug, info};
+use log::{debug, info, LevelFilter};
 use protocol::ProtocolError;
 use thiserror::Error;
 use tokio::net::TcpListener;
 
 mod client;
 mod connection;
+mod logging;
 
 #[derive(Debug, Error)]
 pub enum ServerError {
@@ -26,24 +23,7 @@ pub enum ServerError {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let colors = ColoredLevelConfig::new()
-        .trace(Color::Cyan)
-        .debug(Color::Blue)
-        .info(Color::Green)
-        .warn(Color::Yellow)
-        .error(Color::Red);
-
-    Dispatch::new()
-        .format(move |out, message, record| {
-            out.finish(format_args!(
-                "{} [{}] \x1b[0m{}",
-                record.target(),
-                colors.color(record.level()),
-                message
-            ))
-        })
-        .chain(std::io::stdout())
-        .apply()?;
+    logging::init(LevelFilter::Debug)?;
 
     let listener = TcpListener::bind("0.0.0.0:25565").await?;
     info!("listening on 0.0.0.0:25565 for new connections");
