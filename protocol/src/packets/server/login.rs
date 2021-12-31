@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::chat::Message;
 
 packet! {
@@ -6,5 +8,9 @@ packet! {
         0x00 = Disconnect {
             reason: Message,
         },
+        0x02 = Success {
+            uuid: Uuid,
+            name: String,
+        }
     }
 }

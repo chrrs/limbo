@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use anyhow::anyhow;
-use log::{error, info, trace, warn};
+use log::{error, info, warn};
 use protocol::{
     chat::Message,
     info::{PlayerInfo, ServerInfo, VERSION},
@@ -15,6 +15,7 @@ use protocol::{
     },
     ProtocolError,
 };
+use uuid::Uuid;
 
 use crate::{connection::Connection, ServerError};
 
@@ -23,6 +24,7 @@ pub struct Client {
     disconnected: bool,
 
     name: Option<String>,
+    uuid: Option<Uuid>,
 }
 
 impl Client {
@@ -32,6 +34,7 @@ impl Client {
             disconnected: false,
 
             name: None,
+            uuid: None,
         }
     }
 
@@ -109,10 +112,31 @@ impl Client {
             },
             ClientPacket::Login(packet) => match packet {
                 ClientLoginPacket::Start { name } => {
-                    trace!("client logged in with name {}", name);
-                    self.name = Some(name);
+                    if name.is_empty() || name.len() > 16 {
+                        return self
+                            .disconnect("Usernames should be between 1-16 characters long.")
+                            .await;
+                    }
 
-                    self.disconnect("Unimplemented").await?;
+                    self.name = Some(name);
+                    self.uuid = Some(Uuid::new_v4());
+
+                    // TODO: Encryption
+                    // TODO: Compression
+
+                    self.connection
+                        .write_packet(ServerPacket::Login(ServerLoginPacket::Success {
+                            uuid: self.uuid.unwrap(),
+                            name: self.name.clone().unwrap(),
+                        }))
+                        .await?;
+                    self.connection.state = State::Play;
+
+                    info!(
+                        "client logged in ({}, {})",
+                        self.name.as_ref().unwrap(),
+                        self.uuid.unwrap()
+                    );
                 }
             },
         }
