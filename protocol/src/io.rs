@@ -2,6 +2,7 @@ use std::io::{Cursor, Read, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use paste::paste;
+use uuid::Uuid;
 
 use super::{ProtocolError, Readable, VarInt, Writable};
 
@@ -65,5 +66,23 @@ impl Readable for i8 {
 impl Writable for i8 {
     fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
         Ok(buffer.write_i8(*self)?)
+    }
+}
+
+impl Readable for Uuid {
+    fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Uuid, ProtocolError> {
+        Ok(Uuid::from_u64_pair(
+            u64::read_from(buffer)?,
+            u64::read_from(buffer)?,
+        ))
+    }
+}
+
+impl Writable for Uuid {
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
+        let (hi, lo) = self.as_u64_pair();
+        hi.write_to(buffer)?;
+        lo.write_to(buffer)?;
+        Ok(())
     }
 }
