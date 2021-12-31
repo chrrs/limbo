@@ -98,3 +98,27 @@ impl Writable for bool {
         if *self { 1u8 } else { 0u8 }.write_to(buffer)
     }
 }
+
+// TODO: It should be more obvious that these vec's are VarInt-prefixed.
+impl<T: Readable> Readable for Vec<T> {
+    fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Vec<T>, ProtocolError> {
+        let length = VarInt::read_from(buffer)?;
+        let vec = Vec::with_capacity(length.0 as usize);
+
+        for _ in 0..length.0 {
+            vec.push(T::read_from(buffer)?);
+        }
+
+        Ok(vec)
+    }
+}
+
+impl<T: Writable> Writable for Vec<T> {
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
+        VarInt(self.len() as i32).write_to(buffer)?;
+        for element in self {
+            element.write_to(buffer)?;
+        }
+
+        Ok(())
+    }

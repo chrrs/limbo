@@ -14,7 +14,7 @@ macro_rules! packet {
         $vis:vis enum $name:ident {
             $(
                 $id:literal = $packet:ident {
-                    $($field:ident: $typ:ident),*
+                    $($field:ident: $typ:ident$(<$generics:ident>)?),*
                     $(,)?
                 }
             ),*
@@ -25,7 +25,7 @@ macro_rules! packet {
         $vis enum $name {
             $(
                 $packet {
-                    $($field: $typ),*
+                    $($field: $typ$(<$generics>)?),*
                 }
             ),*
         }
