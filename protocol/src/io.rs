@@ -106,7 +106,7 @@ impl Writable for bool {
 impl<T: Readable> Readable for Vec<T> {
     fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Vec<T>, ProtocolError> {
         let length = VarInt::read_from(buffer)?;
-        let vec = Vec::with_capacity(length.0 as usize);
+        let mut vec = Vec::with_capacity(length.0 as usize);
 
         for _ in 0..length.0 {
             vec.push(T::read_from(buffer)?);
