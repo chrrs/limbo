@@ -127,7 +127,7 @@ macro_rules! packet_enum {
 
 pub mod chat;
 pub mod info;
-mod io;
+pub mod io;
 pub mod packets;
 mod variable;
 
@@ -141,6 +141,9 @@ pub enum ProtocolError {
 
     #[error("packet with id {0} not recognized")]
     InvalidPacketId(i32),
+
+    #[error("raw bytes are not readable")]
+    RawUnreadable,
 
     #[error("enum variant with id {id} does not exist for {name}")]
     InvalidEnumVariant {

@@ -1,4 +1,7 @@
-use std::io::{Cursor, Read, Write};
+use std::{
+    borrow::Cow,
+    io::{Cursor, Read, Write},
+};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use paste::paste;
@@ -121,5 +124,25 @@ impl<T: Writable> Writable for Vec<T> {
         }
 
         Ok(())
+    }
+}
+
+pub struct Raw(pub Cow<'static, [u8]>);
+
+impl std::fmt::Debug for Raw {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Raw").finish()
+    }
+}
+
+impl Readable for Raw {
+    fn read_from(_: &mut Cursor<&[u8]>) -> Result<Raw, ProtocolError> {
+        Err(ProtocolError::RawUnreadable)
+    }
+}
+
+impl Writable for Raw {
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
+        Ok(buffer.write_all(&self.0)?)
     }
 }
