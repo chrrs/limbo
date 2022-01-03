@@ -1,4 +1,4 @@
-use crate::{chat::Message, io::Raw, VarInt};
+use crate::{chat::Message, io::Raw, types::GameMode, VarInt};
 
 packet! {
     #[derive(Debug)]
@@ -6,8 +6,8 @@ packet! {
         0x26 = JoinGame {
             entity_id: i32,
             hardcore: bool,
-            gamemode: i8,
-            previous_gamemode: i8,
+            gamemode: GameMode,
+            previous_gamemode: Option<GameMode>,
             world_names: Vec<String>,
             // TODO: Abstract these away better.
             dimension_codec: Raw,

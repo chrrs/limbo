@@ -129,6 +129,7 @@ pub mod chat;
 pub mod info;
 pub mod io;
 pub mod packets;
+pub mod types;
 mod variable;
 
 #[derive(Error, Debug)]

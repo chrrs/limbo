@@ -17,6 +17,7 @@ use protocol::{
         },
         State,
     },
+    types::GameMode,
     ProtocolError, VarInt,
 };
 use tokio::sync::RwLock;
@@ -152,8 +153,8 @@ impl Client {
                         .write_packet(ServerPacket::Play(ServerPlayPacket::JoinGame {
                             entity_id: 0,
                             hardcore: true,
-                            gamemode: 0,
-                            previous_gamemode: -1,
+                            gamemode: GameMode::Survival,
+                            previous_gamemode: None,
                             world_names: vec!["limbo".to_string()],
                             dimension_codec: Raw(Cow::Borrowed(include_bytes!(
                                 "./dimension_codec.nbt"
