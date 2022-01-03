@@ -67,7 +67,7 @@ impl Client {
                 Ok(None) => self.disconnected = true,
                 Err(ServerError::Protocol(ProtocolError::InvalidPacketId(id))) => {
                     warn!(
-                        "received unrecognized packet ({:?}, id: {:#x})",
+                        "received unrecognized packet ({:?}, id: {:#04x})",
                         self.connection.state, id
                     );
                 }
@@ -181,6 +181,7 @@ impl Client {
                         .await?;
                 }
             },
+            ClientPacket::Play(_) => todo!(),
         }
 
         Ok(())
