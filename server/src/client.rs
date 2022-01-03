@@ -243,7 +243,7 @@ impl Client {
                 self.connection.write_packet(disconnect).await?;
 
                 if let Some(name) = self.name.as_ref() {
-                    info!("disallowed login for {} (reason: {})", name, reason);
+                    info!("disallowed login ({}, reason: {})", name, reason);
                 } else {
                     info!("disallowed login (reason: {})", reason);
                 }
