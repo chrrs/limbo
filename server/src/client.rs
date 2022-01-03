@@ -148,25 +148,6 @@ impl Client {
                         self.uuid.unwrap()
                     );
 
-                    // TODO: Read these two directly from disk.
-                    let mut dimension_codec = Vec::new();
-                    quartz_nbt::io::write_nbt(
-                        &mut dimension_codec,
-                        None,
-                        &quartz_nbt::snbt::parse(include_str!("./dimension_codec.snbt")).unwrap(),
-                        quartz_nbt::io::Flavor::Uncompressed,
-                    )
-                    .unwrap();
-
-                    let mut dimension = Vec::new();
-                    quartz_nbt::io::write_nbt(
-                        &mut dimension,
-                        None,
-                        &quartz_nbt::snbt::parse(include_str!("./dimension.snbt")).unwrap(),
-                        quartz_nbt::io::Flavor::Uncompressed,
-                    )
-                    .unwrap();
-
                     self.connection
                         .write_packet(ServerPacket::Play(ServerPlayPacket::JoinGame {
                             entity_id: 0,
@@ -174,8 +155,10 @@ impl Client {
                             gamemode: 0,
                             previous_gamemode: -1,
                             world_names: vec!["limbo".to_string()],
-                            dimension_codec: Raw(Cow::Owned(dimension_codec)),
-                            dimension: Raw(Cow::Owned(dimension)),
+                            dimension_codec: Raw(Cow::Borrowed(include_bytes!(
+                                "./dimension_codec.nbt"
+                            ))),
+                            dimension: Raw(Cow::Borrowed(include_bytes!("./dimension.nbt"))),
                             world_name: "limbo".to_string(),
                             hashed_seed: 0,
                             max_players: VarInt(1),
