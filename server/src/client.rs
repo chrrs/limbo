@@ -84,6 +84,14 @@ impl Client {
                 }
             }
         }
+
+        if let State::Play = self.connection.state {
+            info!(
+                "client disconnected ({}, {})",
+                self.name.as_ref().unwrap(),
+                self.uuid.as_ref().unwrap()
+            );
+        }
     }
 
     async fn process_packet(&mut self, packet: ClientPacket) -> Result<(), ServerError> {
@@ -146,7 +154,7 @@ impl Client {
                     info!(
                         "client logged in ({}, {})",
                         self.name.as_ref().unwrap(),
-                        self.uuid.unwrap()
+                        self.uuid.as_ref().unwrap()
                     );
 
                     self.connection
