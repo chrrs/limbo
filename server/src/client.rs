@@ -1,7 +1,7 @@
 use std::{borrow::Cow, fmt::Display, sync::Arc};
 
 use anyhow::anyhow;
-use log::{error, info, warn};
+use log::{debug, error, info};
 use protocol::{
     chat::Message,
     info::{PlayerInfo, ServerInfo, VERSION},
@@ -20,13 +20,19 @@ use protocol::{
     types::GameMode,
     ProtocolError, VarInt,
 };
-use tokio::sync::RwLock;
+use tokio::{
+    select,
+    sync::{mpsc::Sender, RwLock},
+};
 use uuid::Uuid;
 
-use crate::{config::Config, connection::Connection, ServerError};
+use crate::{config::Config, connection::Connection, shutdown::Shutdown, ServerError};
 
 pub struct Client {
     config: Arc<RwLock<Config>>,
+
+    shutdown: Shutdown,
+    _shutdown_done: Sender<()>,
 
     connection: Connection,
     disconnected: bool,
@@ -36,9 +42,17 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(connection: Connection, config: Arc<RwLock<Config>>) -> Client {
+    pub fn new(
+        connection: Connection,
+        config: Arc<RwLock<Config>>,
+        shutdown: Shutdown,
+        shutdown_done: Sender<()>,
+    ) -> Client {
         Client {
             config,
+
+            shutdown,
+            _shutdown_done: shutdown_done,
 
             connection,
             disconnected: false,
@@ -50,36 +64,27 @@ impl Client {
 
     pub async fn run(&mut self) {
         while !self.disconnected {
-            match self.connection.read_packet().await {
-                Ok(Some(packet)) => {
-                    if let Err(err) = self.process_packet(packet).await {
-                        let err = anyhow!(err);
-                        error!("failed to process packet: {:#}", err);
-
-                        if let Err(err) = self.disconnect(&format!("Bad packet: {}", err)).await {
-                            error!(
-                                "failed to disconnect client after packet error: {:#}",
-                                anyhow!(err)
-                            )
-                        }
+            select! {
+                packet = self.connection.read_packet() => {
+                    match packet {
+                        Ok(Some(packet)) => {
+                            if let Err(err) = self.process_packet(packet).await {
+                                error!("failed to process packet: {:#}", anyhow!(err));
+                            }
+                        },
+                        Ok(None) => self.disconnected = true,
+                        Err(ServerError::Protocol(ProtocolError::InvalidPacketId(id))) => {
+                            debug!(
+                                "received unrecognized packet (state: {:?}, id: {:#04x})",
+                                self.connection.state, id
+                            );
+                        },
+                        Err(err) => error!("failed to read packet: {:#}", anyhow!(err)),
                     }
                 }
-                Ok(None) => self.disconnected = true,
-                Err(ServerError::Protocol(ProtocolError::InvalidPacketId(id))) => {
-                    warn!(
-                        "received unrecognized packet ({:?}, id: {:#04x})",
-                        self.connection.state, id
-                    );
-                }
-                Err(err) => {
-                    let err = anyhow!(err);
-                    error!("failed to read packet: {:#}", err);
-
-                    if let Err(err) = self.disconnect(&format!("Invalid packet: {}", err)).await {
-                        error!(
-                            "failed to disconnect client after packet error: {:#}",
-                            anyhow!(err)
-                        )
+                _ = self.shutdown.recv() => {
+                    if let Err(err) = self.disconnect("Server is shutting down.").await {
+                        error!("failed to disconnect client: {:#}", err);
                     }
                 }
             }

@@ -22,7 +22,7 @@ packet! {
             debug: bool,
             flat: bool,
         },
-        0x40 = Disconnect {
+        0x1a = Disconnect {
             reason: Message,
         },
     }
