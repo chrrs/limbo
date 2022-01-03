@@ -118,7 +118,7 @@ macro_rules! packet_enum {
         impl crate::Writable for $name {
             fn write_to(&self, buffer: &mut dyn std::io::Write) -> Result<(), crate::ProtocolError> {
                 match self {
-                    $(Self::$variant => Ok($id.write_to(buffer)?),)*
+                    $(Self::$variant => Ok(($id as $super).write_to(buffer)?),)*
                 }
             }
         }
