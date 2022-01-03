@@ -169,10 +169,8 @@ impl Client {
                             gamemode: GameMode::Survival,
                             previous_gamemode: None,
                             world_names: vec!["limbo".to_string()],
-                            dimension_codec: Raw(Cow::Borrowed(include_bytes!(
-                                "./dimension_codec.nbt"
-                            ))),
-                            dimension: Raw(Cow::Borrowed(include_bytes!("./dimension.nbt"))),
+                            dimension_codec: Raw::new(&include_bytes!("./dimension_codec.nbt")[..]),
+                            dimension: Raw::new(&include_bytes!("./dimension.nbt")[..]),
                             world_name: "limbo".to_string(),
                             hashed_seed: 0,
                             max_players: VarInt(1),

@@ -129,6 +129,12 @@ impl<T: Writable> Writable for Vec<T> {
 
 pub struct Raw(pub Cow<'static, [u8]>);
 
+impl Raw {
+    pub fn new<S: Into<Cow<'static, [u8]>>>(data: S) -> Raw {
+        Raw(data.into())
+    }
+}
+
 impl std::fmt::Debug for Raw {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("Raw").finish()
@@ -140,7 +146,7 @@ impl Readable for Raw {
         let mut vec = Vec::new();
         // TODO: We should use remaining_slice() here, but it's unstable.
         vec.extend_from_slice(&buffer.get_ref()[buffer.position() as usize..]);
-        Ok(Raw(Cow::Owned(vec)))
+        Ok(Raw::new(vec))
     }
 }
 
