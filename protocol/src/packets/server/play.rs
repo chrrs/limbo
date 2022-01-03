@@ -3,6 +3,10 @@ use crate::{chat::Message, io::Raw, types::GameMode, VarInt};
 packet! {
     #[derive(Debug)]
     pub enum ServerPlayPacket {
+        0x18 = PluginMessage {
+            channel: String,
+            data: Raw,
+        },
         0x26 = JoinGame {
             entity_id: i32,
             hardcore: bool,

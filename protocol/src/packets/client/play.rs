@@ -6,6 +6,6 @@ packet! {
         0x0a = PluginMessage {
             channel: String,
             data: Raw,
-        }
+        },
     }
 }

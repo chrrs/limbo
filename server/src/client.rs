@@ -182,6 +182,9 @@ impl Client {
                             flat: false,
                         }))
                         .await?;
+
+                    self.send_plugin_message("minecraft:brand", "limbo".as_bytes())
+                        .await?;
                 }
             },
             ClientPacket::Play(packet) => match packet {
@@ -204,6 +207,27 @@ impl Client {
                 },
             },
         }
+
+        Ok(())
+    }
+
+    async fn send_plugin_message<S: Display + ToString, D: Into<Cow<'static, [u8]>>>(
+        &mut self,
+        channel: S,
+        data: D,
+    ) -> Result<(), ServerError> {
+        self.connection
+            .write_packet(ServerPacket::Play(ServerPlayPacket::PluginMessage {
+                channel: channel.to_string(),
+                data: Raw::new(data),
+            }))
+            .await?;
+
+        debug!(
+            "sent plugin message (channel: {}, to: {})",
+            channel,
+            self.name.as_ref().unwrap()
+        );
 
         Ok(())
     }
