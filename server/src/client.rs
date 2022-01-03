@@ -8,8 +8,8 @@ use protocol::{
     io::Raw,
     packets::{
         client::{
-            handshake::ClientHandshakePacket, login::ClientLoginPacket, status::ClientStatusPacket,
-            ClientPacket,
+            handshake::ClientHandshakePacket, login::ClientLoginPacket, play::ClientPlayPacket,
+            status::ClientStatusPacket, ClientPacket,
         },
         server::{
             login::ServerLoginPacket, play::ServerPlayPacket, status::ServerStatusPacket,
@@ -186,7 +186,25 @@ impl Client {
                         .await?;
                 }
             },
-            ClientPacket::Play(_) => todo!(),
+            ClientPacket::Play(packet) => match packet {
+                ClientPlayPacket::PluginMessage { channel, data } => match channel.as_str() {
+                    "minecraft:brand" => {
+                        let brand = std::str::from_utf8(&data.0);
+                        if let Ok(brand) = brand {
+                            debug!(
+                                "client brand of {} is {}",
+                                self.name.as_ref().unwrap(),
+                                brand
+                            )
+                        }
+                    }
+                    _ => debug!(
+                        "received unknown plugin message (channel: {}, from: {})",
+                        channel,
+                        self.name.as_ref().unwrap()
+                    ),
+                },
+            },
         }
 
         Ok(())

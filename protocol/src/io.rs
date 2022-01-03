@@ -136,8 +136,11 @@ impl std::fmt::Debug for Raw {
 }
 
 impl Readable for Raw {
-    fn read_from(_: &mut Cursor<&[u8]>) -> Result<Raw, ProtocolError> {
-        Err(ProtocolError::RawUnreadable)
+    fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Raw, ProtocolError> {
+        let mut vec = Vec::new();
+        // TODO: We should use remaining_slice() here, but it's unstable.
+        vec.extend_from_slice(&buffer.get_ref()[buffer.position() as usize..]);
+        Ok(Raw(Cow::Owned(vec)))
     }
 }
 

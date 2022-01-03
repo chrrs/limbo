@@ -143,9 +143,6 @@ pub enum ProtocolError {
     #[error("packet with id {0} not recognized")]
     InvalidPacketId(i32),
 
-    #[error("raw bytes are not readable")]
-    RawUnreadable,
-
     #[error("enum variant with id {id} does not exist for {name}")]
     InvalidEnumVariant {
         // TODO: Maybe this should be something else than a string?
