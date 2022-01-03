@@ -1,10 +1,11 @@
-use std::{fmt::Display, sync::Arc};
+use std::{borrow::Cow, fmt::Display, sync::Arc};
 
 use anyhow::anyhow;
 use log::{error, info, warn};
 use protocol::{
     chat::Message,
     info::{PlayerInfo, ServerInfo, VERSION},
+    io::Raw,
     packets::{
         client::{
             handshake::ClientHandshakePacket, login::ClientLoginPacket, status::ClientStatusPacket,
@@ -16,7 +17,7 @@ use protocol::{
         },
         State,
     },
-    ProtocolError,
+    ProtocolError, VarInt,
 };
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -146,6 +147,46 @@ impl Client {
                         self.name.as_ref().unwrap(),
                         self.uuid.unwrap()
                     );
+
+                    // TODO: Read these two directly from disk.
+                    let mut dimension_codec = Vec::new();
+                    quartz_nbt::io::write_nbt(
+                        &mut dimension_codec,
+                        None,
+                        &quartz_nbt::snbt::parse(include_str!("./dimension_codec.snbt")).unwrap(),
+                        quartz_nbt::io::Flavor::Uncompressed,
+                    )
+                    .unwrap();
+
+                    let mut dimension = Vec::new();
+                    quartz_nbt::io::write_nbt(
+                        &mut dimension,
+                        None,
+                        &quartz_nbt::snbt::parse(include_str!("./dimension.snbt")).unwrap(),
+                        quartz_nbt::io::Flavor::Uncompressed,
+                    )
+                    .unwrap();
+
+                    self.connection
+                        .write_packet(ServerPacket::Play(ServerPlayPacket::JoinGame {
+                            entity_id: 0,
+                            hardcore: true,
+                            gamemode: 0,
+                            previous_gamemode: -1,
+                            world_names: vec!["limbo".to_string()],
+                            dimension_codec: Raw(Cow::Owned(dimension_codec)),
+                            dimension: Raw(Cow::Owned(dimension)),
+                            world_name: "limbo".to_string(),
+                            hashed_seed: 0,
+                            max_players: VarInt(1),
+                            view_distance: VarInt(32),
+                            simulation_distance: VarInt(32),
+                            reduced_debug_info: true,
+                            enable_respawn_screen: false,
+                            debug: false,
+                            flat: false,
+                        }))
+                        .await?;
                 }
             },
         }
