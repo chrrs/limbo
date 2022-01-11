@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::Display, sync::Arc};
+use std::{borrow::Cow, fmt::Display, sync::Arc, time::Duration};
 
 use anyhow::anyhow;
 use log::{debug, error, info};
@@ -22,20 +22,27 @@ use protocol::{
 };
 use tokio::{
     select,
-    sync::{mpsc::Sender, RwLock},
+    sync::{broadcast, mpsc, RwLock},
+    time,
 };
 use uuid::Uuid;
 
 use crate::{config::Config, connection::Connection, shutdown::Shutdown, ServerError};
 
+const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
+
 pub struct Client {
     config: Arc<RwLock<Config>>,
 
     shutdown: Shutdown,
-    _shutdown_done: Sender<()>,
+    _shutdown_done: mpsc::Sender<()>,
+    stop: broadcast::Sender<()>,
 
     connection: Connection,
     disconnected: bool,
+
+    packet_send: mpsc::Sender<ServerPacket>,
+    packet_queue: mpsc::Receiver<ServerPacket>,
 
     name: Option<String>,
     uuid: Option<Uuid>,
@@ -46,8 +53,10 @@ impl Client {
         connection: Connection,
         config: Arc<RwLock<Config>>,
         shutdown: Shutdown,
-        shutdown_done: Sender<()>,
+        shutdown_done: mpsc::Sender<()>,
     ) -> Client {
+        let (sender, receiver) = mpsc::channel(5);
+
         Client {
             config,
 
@@ -57,6 +66,10 @@ impl Client {
             connection,
             disconnected: false,
 
+            packet_send: sender,
+            packet_queue: receiver,
+            stop: broadcast::channel(1).0,
+
             name: None,
             uuid: None,
         }
@@ -65,6 +78,11 @@ impl Client {
     pub async fn run(&mut self) {
         while !self.disconnected {
             select! {
+                Some(packet) = self.packet_queue.recv() => {
+                    if let Err(err) = self.connection.write_packet(packet).await {
+                        error!("failed to write packet: {:#}", anyhow!(err));
+                    }
+                }
                 packet = self.connection.read_packet() => {
                     match packet {
                         Ok(Some(packet)) => {
@@ -90,6 +108,9 @@ impl Client {
                 }
             }
         }
+
+        // This will fail if there are no recipients, but we don't care.
+        let _ = self.stop.send(());
 
         if let State::Play = self.connection.state {
             info!(
@@ -173,6 +194,8 @@ impl Client {
                         self.uuid.as_ref().unwrap()
                     );
 
+                    self.start_keeping_alive();
+
                     self.connection
                         .write_packet(ServerPacket::Play(ServerPlayPacket::JoinGame {
                             entity_id: 0,
@@ -220,6 +243,26 @@ impl Client {
         }
 
         Ok(())
+    }
+
+    fn start_keeping_alive(&mut self) {
+        let send_queue = self.packet_send.clone();
+        let mut stop = self.stop.subscribe();
+        tokio::spawn(async move {
+            let mut interval = time::interval(KEEP_ALIVE_INTERVAL);
+
+            loop {
+                select! {
+                    _ = interval.tick() => {
+                        // TODO: Properly process the client response to this.
+                        send_queue.send(ServerPacket::Play(ServerPlayPacket::KeepAlive { id: 0 }))
+                            .await
+                            .unwrap();
+                    }
+                    _ = stop.recv() => break
+                }
+            }
+        });
     }
 
     async fn send_plugin_message<S: Display + ToString, D: Into<Cow<'static, [u8]>>>(

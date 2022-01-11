@@ -7,6 +7,9 @@ packet! {
             channel: String,
             data: Raw,
         },
+        0x21 = KeepAlive {
+            id: u64,
+        },
         0x26 = JoinGame {
             entity_id: i32,
             hardcore: bool,
