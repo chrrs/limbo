@@ -1,4 +1,12 @@
-use std::{borrow::Cow, fmt::Display, sync::Arc, time::Duration};
+use std::{
+    borrow::Cow,
+    fmt::Display,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
 use anyhow::anyhow;
 use log::{debug, error, info, trace};
@@ -30,6 +38,9 @@ use uuid::Uuid;
 use crate::{config::Config, connection::Connection, shutdown::Shutdown, ServerError};
 
 const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
+
+// TODO: Find a better place to store this variable.
+pub static ONLINE_PLAYERS: AtomicUsize = AtomicUsize::new(0);
 
 pub struct Client {
     config: Arc<RwLock<Config>>,
@@ -118,6 +129,8 @@ impl Client {
                 self.name.as_ref().unwrap(),
                 self.uuid.as_ref().unwrap()
             );
+
+            ONLINE_PLAYERS.fetch_sub(1, Ordering::Relaxed);
         }
     }
 
@@ -147,8 +160,10 @@ impl Client {
                     let player_info = if config.info.hide_player_count {
                         None
                     } else {
-                        // TODO: Make this player count accurate.
-                        Some(PlayerInfo::simple(12, config.info.max_players))
+                        Some(PlayerInfo::simple(
+                            ONLINE_PLAYERS.load(Ordering::Relaxed) as isize,
+                            config.info.max_players,
+                        ))
                     };
 
                     let response = ServerPacket::Status(ServerStatusPacket::Response {
@@ -193,6 +208,8 @@ impl Client {
                         self.name.as_ref().unwrap(),
                         self.uuid.as_ref().unwrap()
                     );
+
+                    ONLINE_PLAYERS.fetch_add(1, Ordering::Relaxed);
 
                     self.start_keeping_alive();
 
