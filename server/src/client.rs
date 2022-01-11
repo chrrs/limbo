@@ -1,7 +1,7 @@
 use std::{borrow::Cow, fmt::Display, sync::Arc, time::Duration};
 
 use anyhow::anyhow;
-use log::{debug, error, info};
+use log::{debug, error, info, trace};
 use protocol::{
     chat::Message,
     info::{PlayerInfo, ServerInfo, VERSION},
@@ -239,6 +239,16 @@ impl Client {
                         self.name.as_ref().unwrap()
                     ),
                 },
+                ClientPlayPacket::PlayerPosition { x, y, z, on_ground } => {
+                    trace!(
+                        "{} moved to {:.02}, {:.02}, {:.02} (grounded: {})",
+                        self.name.as_ref().unwrap(),
+                        x,
+                        y,
+                        z,
+                        on_ground
+                    );
+                }
             },
         }
 
@@ -287,6 +297,8 @@ impl Client {
     }
 
     async fn disconnect<S: Display + ToString>(&mut self, reason: S) -> Result<(), ServerError> {
+        // TODO: Actually disconnect when this function is called, instead of after the next packet.
+
         self.disconnected = true;
 
         match self.connection.state {
