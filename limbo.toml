@@ -5,7 +5,7 @@ port = 25565
 log_level = "debug"
 
 [info]
-# hidden = false
+hidden = true
 max_players = -1
 hide_player_count = false
 motd = "A Limbo Server"

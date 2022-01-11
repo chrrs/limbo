@@ -113,6 +113,8 @@ impl Client {
                         if VERSION.protocol != protocol_version.0 as usize {
                             self.disconnect(&format!("Version mismatch between client and server. Please connect using {}.", VERSION.name)).await?;
                         }
+                    } else if self.config.read().await.info.hidden {
+                        self.disconnect("").await?;
                     }
                 }
             },
@@ -123,6 +125,7 @@ impl Client {
                     let player_info = if config.info.hide_player_count {
                         None
                     } else {
+                        // TODO: Make this player count accurate.
                         Some(PlayerInfo::simple(12, config.info.max_players))
                     };
 
