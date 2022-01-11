@@ -72,6 +72,30 @@ impl Writable for i8 {
     }
 }
 
+impl Readable for f32 {
+    fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Self, ProtocolError> {
+        Ok(buffer.read_f32::<BigEndian>()?)
+    }
+}
+
+impl Writable for f32 {
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
+        Ok(buffer.write_f32::<BigEndian>(*self)?)
+    }
+}
+
+impl Readable for f64 {
+    fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Self, ProtocolError> {
+        Ok(buffer.read_f64::<BigEndian>()?)
+    }
+}
+
+impl Writable for f64 {
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
+        Ok(buffer.write_f64::<BigEndian>(*self)?)
+    }
+}
+
 impl Readable for Uuid {
     fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Uuid, ProtocolError> {
         Ok(Uuid::from_u64_pair(
