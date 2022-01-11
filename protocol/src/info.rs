@@ -15,12 +15,12 @@ pub const VERSION: VersionInfo = VersionInfo {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerInfo {
     version: VersionInfo,
-    players: PlayerInfo,
+    players: Option<PlayerInfo>,
     description: Message,
 }
 
 impl ServerInfo {
-    pub fn new(version: VersionInfo, players: PlayerInfo, motd: Message) -> ServerInfo {
+    pub fn new(version: VersionInfo, players: Option<PlayerInfo>, motd: Message) -> ServerInfo {
         ServerInfo {
             version,
             players,

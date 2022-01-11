@@ -7,6 +7,7 @@ log_level = "debug"
 [info]
 # hidden = false
 max_players = -1
+hide_player_count = false
 motd = "A Limbo Server"
 # name = "Limbo"
 # icon = "icon.png"

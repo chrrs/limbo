@@ -54,6 +54,7 @@ impl Default for Server {
 #[derive(Serialize, Deserialize)]
 pub struct Info {
     pub max_players: isize,
+    pub hide_player_count: bool,
     pub motd: String,
 }
 
@@ -61,6 +62,7 @@ impl Default for Info {
     fn default() -> Info {
         Info {
             max_players: -1,
+            hide_player_count: false,
             motd: "A Limbo Server".to_string(),
         }
     }

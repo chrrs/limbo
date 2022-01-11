@@ -119,10 +119,17 @@ impl Client {
             ClientPacket::Status(packet) => match packet {
                 ClientStatusPacket::Request {} => {
                     let config = self.config.read().await;
+
+                    let player_info = if config.info.hide_player_count {
+                        None
+                    } else {
+                        Some(PlayerInfo::simple(12, config.info.max_players))
+                    };
+
                     let response = ServerPacket::Status(ServerStatusPacket::Response {
                         response: ServerInfo::new(
                             VERSION,
-                            PlayerInfo::simple(12, config.info.max_players),
+                            player_info,
                             Message::new(config.info.motd.clone()),
                         ),
                     });
