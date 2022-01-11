@@ -79,6 +79,7 @@ impl Client {
                                 self.connection.state, id
                             );
                         },
+                        Err(ServerError::ConnectionReset) => self.disconnected = true,
                         Err(err) => error!("failed to read packet: {:#}", anyhow!(err)),
                     }
                 }
