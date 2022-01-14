@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     fmt::Display,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -26,7 +25,7 @@ use protocol::{
         State,
     },
     types::{GameMode, Position},
-    ProtocolError, VarInt,
+    ProtocolError, Readable, VarInt, Writable,
 };
 use tokio::{
     select,
@@ -227,14 +226,14 @@ impl Client {
                             max_players: VarInt(1),
                             view_distance: VarInt(32),
                             simulation_distance: VarInt(32),
-                            reduced_debug_info: true,
+                            reduced_debug_info: false,
                             enable_respawn_screen: false,
                             debug: false,
                             flat: false,
                         }))
                         .await?;
 
-                    self.send_plugin_message("minecraft:brand", "limbo".as_bytes())
+                    self.send_plugin_message("minecraft:brand", "limbo".to_string())
                         .await?;
 
                     self.connection
@@ -264,7 +263,7 @@ impl Client {
             ClientPacket::Play(packet) => match packet {
                 ClientPlayPacket::PluginMessage { channel, data } => match channel.as_str() {
                     "minecraft:brand" => {
-                        let brand = std::str::from_utf8(&data.0);
+                        let brand = String::decode(&data.0);
                         if let Ok(brand) = brand {
                             debug!(
                                 "client brand of {} is {}",
@@ -322,7 +321,7 @@ impl Client {
         });
     }
 
-    async fn send_plugin_message<S: Display + ToString, D: Into<Cow<'static, [u8]>>>(
+    async fn send_plugin_message<S: Display + ToString, D: Writable>(
         &mut self,
         channel: S,
         data: D,
@@ -330,7 +329,7 @@ impl Client {
         self.connection
             .write_packet(ServerPacket::Play(ServerPlayPacket::PluginMessage {
                 channel: channel.to_string(),
-                data: Raw::new(data),
+                data: Raw::new(data.encode()?),
             }))
             .await?;
 

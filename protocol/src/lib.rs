@@ -159,8 +159,18 @@ pub enum ProtocolError {
 
 pub trait Readable: Sized {
     fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Self, ProtocolError>;
+
+    fn decode(buffer: &[u8]) -> Result<Self, ProtocolError> {
+        Self::read_from(&mut Cursor::new(buffer))
+    }
 }
 
 pub trait Writable {
     fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError>;
+
+    fn encode(&self) -> Result<Vec<u8>, ProtocolError> {
+        let mut buf = Vec::new();
+        self.write_to(&mut buf)?;
+        Ok(buf)
+    }
 }
