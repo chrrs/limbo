@@ -1,4 +1,9 @@
-use crate::{chat::Message, io::Raw, types::GameMode, VarInt};
+use crate::{
+    chat::Message,
+    io::Raw,
+    types::{GameMode, Position},
+    VarInt,
+};
 
 packet! {
     #[derive(Debug)]
@@ -32,5 +37,9 @@ packet! {
         0x1a = Disconnect {
             reason: Message,
         },
+        0x4b = SpawnPosition {
+            location: Position,
+            angle: f32,
+        }
     }
 }

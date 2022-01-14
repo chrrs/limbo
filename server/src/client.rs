@@ -25,7 +25,7 @@ use protocol::{
         },
         State,
     },
-    types::GameMode,
+    types::{GameMode, Position},
     ProtocolError, VarInt,
 };
 use tokio::{
@@ -235,6 +235,13 @@ impl Client {
                         .await?;
 
                     self.send_plugin_message("minecraft:brand", "limbo".as_bytes())
+                        .await?;
+
+                    self.connection
+                        .write_packet(ServerPacket::Play(ServerPlayPacket::SpawnPosition {
+                            angle: 0.0,
+                            location: Position::new(0, 64, 0),
+                        }))
                         .await?;
                 }
             },
