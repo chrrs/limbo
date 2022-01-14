@@ -9,5 +9,5 @@ hidden = false
 max_players = -1
 hide_player_count = false
 motd = "A Limbo Server"
-# name = "Limbo"
+name = "Limbo"
 # icon = "icon.png"

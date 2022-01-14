@@ -182,6 +182,9 @@ impl Client {
             },
             ClientPacket::Login(packet) => match packet {
                 ClientLoginPacket::Start { name } => {
+                    let config_clone = self.config.clone();
+                    let config = config_clone.read().await;
+
                     if name.is_empty() || name.len() > 16 {
                         return self
                             .disconnect("Usernames should be between 1-16 characters long.")
@@ -233,7 +236,7 @@ impl Client {
                         }))
                         .await?;
 
-                    self.send_plugin_message("minecraft:brand", "limbo".to_string())
+                    self.send_plugin_message("minecraft:brand", &config.info.name)
                         .await?;
 
                     self.connection
@@ -324,7 +327,7 @@ impl Client {
     async fn send_plugin_message<S: Display + ToString, D: Writable>(
         &mut self,
         channel: S,
-        data: D,
+        data: &D,
     ) -> Result<(), ServerError> {
         self.connection
             .write_packet(ServerPacket::Play(ServerPlayPacket::PluginMessage {

@@ -57,6 +57,7 @@ pub struct Info {
     pub max_players: isize,
     pub hide_player_count: bool,
     pub motd: String,
+    pub name: String,
 }
 
 impl Default for Info {
@@ -66,6 +67,7 @@ impl Default for Info {
             max_players: -1,
             hide_player_count: false,
             motd: "A Limbo Server".to_string(),
+            name: "Limbo".to_string(),
         }
     }
 }
