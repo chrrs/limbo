@@ -266,6 +266,11 @@ impl Client {
                         on_ground
                     );
                 }
+                ClientPlayPacket::ClientSettings { .. } => {}
+                ClientPlayPacket::KeepAlive { .. } => {
+                    // TODO: Check if the ID matches.
+                }
+                ClientPlayPacket::PlayerPositionAndRotation { .. } => {}
             },
         }
 
