@@ -14,3 +14,7 @@ fern = { version = "0.6.0", features = ["colored"] }
 uuid = { version = "1.0.0-alpha.1", features = ["v4", "fast-rng"] }
 serde = { version = "1.0.132", features = ["derive"] }
 toml = "0.5.8"
+console-subscriber = { version = "0.1.0", optional = true }
+
+[features]
+console = ["console-subscriber", "tokio/tracing"]

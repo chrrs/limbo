@@ -39,6 +39,9 @@ pub enum ServerError {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    #[cfg(feature = "console")]
+    console_subscriber::init();
+
     let config = match config::read(Path::new(CONFIG_PATH)) {
         Ok(config) => {
             logging::init(config.server.log_level)?;

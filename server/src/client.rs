@@ -289,6 +289,8 @@ impl Client {
                     _ = stop.recv() => break
                 }
             }
+
+            debug!("halting keep-alives");
         });
     }
 
