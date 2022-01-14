@@ -37,6 +37,16 @@ packet! {
         0x1a = Disconnect {
             reason: Message,
         },
+        0x38 = PlayerPositionAndLook {
+            x: f64,
+            y: f64,
+            z: f64,
+            yaw: f32,
+            pitch: f32,
+            flags: u8,
+            teleport_id: VarInt,
+            dismount_vehicle: bool,
+        },
         0x4b = SpawnPosition {
             location: Position,
             angle: f32,

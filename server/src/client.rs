@@ -243,6 +243,22 @@ impl Client {
                             location: Position::new(0, 64, 0),
                         }))
                         .await?;
+
+                    // TODO: Abstract this away into a proper teleport function.
+                    self.connection
+                        .write_packet(ServerPacket::Play(
+                            ServerPlayPacket::PlayerPositionAndLook {
+                                x: 0.0,
+                                y: 64.0,
+                                z: 0.0,
+                                yaw: 0.0,
+                                pitch: 0.0,
+                                flags: 0,
+                                teleport_id: VarInt(0),
+                                dismount_vehicle: true,
+                            },
+                        ))
+                        .await?;
                 }
             },
             ClientPacket::Play(packet) => match packet {
