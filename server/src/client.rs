@@ -8,7 +8,7 @@ use std::{
 };
 
 use anyhow::anyhow;
-use log::{debug, error, info, trace};
+use log::{debug, error, info, trace, warn};
 use protocol::{
     chat::Message,
     info::{PlayerInfo, ServerInfo, VERSION},
@@ -108,7 +108,10 @@ impl Client {
                             );
                         },
                         Err(ServerError::ConnectionReset) => self.disconnected = true,
-                        Err(err) => error!("failed to read packet: {:#}", anyhow!(err)),
+                        Err(err) => {
+                            warn!("failed to read packet: {:#}", anyhow!(err));
+                            let _ = self.disconnect("Bad packet.").await;
+                        }
                     }
                 }
                 _ = self.shutdown.recv() => {
@@ -195,7 +198,9 @@ impl Client {
                     self.uuid = Some(Uuid::new_v4());
 
                     // TODO: Encryption
-                    // TODO: Compression
+
+                    // TODO: Lower compression threshold.
+                    self.set_compression(256).await?;
 
                     self.connection
                         .write_packet(ServerPacket::Login(ServerLoginPacket::Success {
@@ -298,6 +303,18 @@ impl Client {
                 ClientPlayPacket::PlayerPositionAndRotation { .. } => {}
             },
         }
+
+        Ok(())
+    }
+
+    async fn set_compression(&mut self, threshold: usize) -> Result<(), ServerError> {
+        self.connection
+            .write_packet(ServerPacket::Login(ServerLoginPacket::SetCompression {
+                threshold: VarInt(threshold as i32),
+            }))
+            .await?;
+
+        self.connection.compression_threshold = Some(threshold);
 
         Ok(())
     }

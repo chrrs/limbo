@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::chat::Message;
+use crate::{chat::Message, VarInt};
 
 packet! {
     #[derive(Debug)]
@@ -11,6 +11,9 @@ packet! {
         0x02 = Success {
             uuid: Uuid,
             name: String,
-        }
+        },
+        0x03 = SetCompression {
+            threshold: VarInt,
+        },
     }
 }
