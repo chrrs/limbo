@@ -1,6 +1,11 @@
 use std::io::{Cursor, Read, Write};
 
+use aes::{
+    cipher::{errors::InvalidLength, AsyncStreamCipher, NewCipher},
+    Aes128,
+};
 use bytes::{Buf, BytesMut};
+use cfb8::Cfb8;
 use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use log::trace;
 use protocol::{
@@ -55,9 +60,11 @@ pub struct Connection {
     stream: BufWriter<TcpStream>,
     packet_buf: Vec<u8>,
     compression_buf: Vec<u8>,
+    encryption_buf: Vec<u8>,
     buffer: BytesMut,
     pub state: State,
     pub compression_threshold: Option<usize>,
+    cipher: Option<(Cfb8<Aes128>, Cfb8<Aes128>)>,
 }
 
 impl Connection {
@@ -66,10 +73,23 @@ impl Connection {
             stream: BufWriter::new(stream),
             packet_buf: Vec::new(),
             compression_buf: Vec::new(),
+            encryption_buf: Vec::new(),
             buffer: BytesMut::new(),
             state: State::Handshake,
             compression_threshold: None,
+            cipher: None,
         }
+    }
+
+    pub fn update_encryption(&mut self, shared_secret: &[u8]) -> Result<(), InvalidLength> {
+        self.cipher = Some((
+            Cfb8::new_from_slices(shared_secret, shared_secret)?,
+            Cfb8::new_from_slices(shared_secret, shared_secret)?,
+        ));
+
+        trace!("encrypted connection");
+
+        Ok(())
     }
 
     pub async fn read_packet(&mut self) -> Result<Option<ClientPacket>, ReceiveError> {
@@ -78,12 +98,16 @@ impl Connection {
                 return Ok(Some(packet));
             }
 
-            if self.stream.read_buf(&mut self.buffer).await? == 0 {
+            let bytes_read = self.stream.read_buf(&mut self.buffer).await?;
+            if bytes_read == 0 {
                 if self.buffer.is_empty() {
                     return Ok(None);
                 } else {
                     return Err(ReceiveError::ConnectionClosed);
                 }
+            } else if let Some(cipher) = &mut self.cipher {
+                let i = self.buffer.len() - bytes_read;
+                cipher.0.decrypt(&mut self.buffer[i..]);
             }
         }
     }
@@ -144,13 +168,19 @@ impl Connection {
 
         if let Some(threshold) = self.compression_threshold {
             self.write_compressed(threshold).await?;
-
-            trace!("sent packet: {:?}", packet);
         } else {
             self.write_uncompressed().await?;
-
-            trace!("sent packet (uncompressed): {:?}", packet);
         }
+
+        if let Some(cipher) = &mut self.cipher {
+            cipher.1.encrypt(&mut self.encryption_buf);
+        }
+
+        self.stream.write(&self.encryption_buf).await?;
+        self.stream.flush().await?;
+        self.encryption_buf.clear();
+
+        trace!("sent packet: {:?}", packet);
 
         self.packet_buf.clear();
 
@@ -178,9 +208,8 @@ impl Connection {
         VarInt(self.compression_buf.len() as i32).write_to(&mut length_bytes)?;
         let position = length_bytes.position() as usize;
 
-        self.stream.write_all(&buf[..position]).await?;
-        self.stream.write_all(&self.compression_buf).await?;
-        self.stream.flush().await?;
+        self.encryption_buf.extend_from_slice(&buf[..position]);
+        self.encryption_buf.extend_from_slice(&self.compression_buf);
 
         self.compression_buf.clear();
 
@@ -193,9 +222,8 @@ impl Connection {
         VarInt(self.packet_buf.len() as i32).write_to(&mut length_bytes)?;
         let position = length_bytes.position() as usize;
 
-        self.stream.write_all(&buf[..position]).await?;
-        self.stream.write_all(&self.packet_buf).await?;
-        self.stream.flush().await?;
+        self.encryption_buf.extend_from_slice(&buf[..position]);
+        self.encryption_buf.extend_from_slice(&self.packet_buf);
 
         Ok(())
     }

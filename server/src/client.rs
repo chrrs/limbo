@@ -9,6 +9,7 @@ use std::{
 
 use anyhow::anyhow;
 use log::{debug, error, info, trace, warn};
+use once_cell::sync::Lazy;
 use protocol::{
     chat::Message,
     info::{PlayerInfo, ServerInfo, VERSION},
@@ -27,6 +28,8 @@ use protocol::{
     types::{GameMode, Position},
     PacketField, ReadError, VarInt,
 };
+use rand::{rngs::OsRng, Rng};
+use rsa::{PaddingScheme, PublicKeyParts, RsaPrivateKey};
 use thiserror::Error;
 use tokio::{
     select,
@@ -45,6 +48,19 @@ const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
 
 // TODO: Find a better place to store this variable.
 pub static ONLINE_PLAYERS: AtomicUsize = AtomicUsize::new(0);
+
+static UNIVERSAL_RSA: Lazy<RsaPrivateKey> = Lazy::new(|| {
+    RsaPrivateKey::new(&mut OsRng, 1024).expect("failed to generate server RSA private key")
+});
+
+static UNIVERSAL_ENCODED_RSA_PUBLIC_KEY: Lazy<Vec<u8>> = Lazy::new(|| {
+    rsa_der::public_key_to_der(
+        &UNIVERSAL_RSA.n().to_bytes_be(),
+        &UNIVERSAL_RSA.e().to_bytes_be(),
+    )
+});
+
+static UNIVERSAL_VERIFY_TOKEN: Lazy<Vec<u8>> = Lazy::new(|| (0..4).map(|_| OsRng.gen()).collect());
 
 #[derive(Debug, Error)]
 pub enum PacketProcessingError {
@@ -120,7 +136,7 @@ impl Client {
                         },
                         Err(ReceiveError::ConnectionClosed) => self.disconnected = true,
                         Err(err) => {
-                            warn!("failed to read packet: {:#}", anyhow!(err));
+                            error!("failed to read packet: {:#}", anyhow!(err));
                             let _ = self.disconnect("Bad packet.").await;
                         }
                     }
@@ -192,9 +208,6 @@ impl Client {
             },
             ClientPacket::Login(packet) => match packet {
                 ClientLoginPacket::Start { name } => {
-                    let config_clone = self.config.clone();
-                    let config = config_clone.read().await;
-
                     if name.is_empty() || name.len() > 16 {
                         self.disconnect("Usernames should be between 1-16 characters long.")
                             .await?;
@@ -204,7 +217,44 @@ impl Client {
                     self.name = Some(name);
                     self.uuid = Some(Uuid::new_v4());
 
-                    // TODO: Encryption
+                    self.connection
+                        .write_packet(ServerPacket::Login(ServerLoginPacket::EncryptionRequest {
+                            server_id: String::new(),
+                            public_key: VarIntPrefixedVec(UNIVERSAL_ENCODED_RSA_PUBLIC_KEY.clone()),
+                            verify_token: VarIntPrefixedVec(UNIVERSAL_VERIFY_TOKEN.clone()),
+                        }))
+                        .await?;
+                }
+                ClientLoginPacket::EncryptionResponse {
+                    shared_secret,
+                    verify_token,
+                } => {
+                    let verify_token =
+                        UNIVERSAL_RSA.decrypt(PaddingScheme::PKCS1v15Encrypt, &verify_token.0);
+                    let shared_secret =
+                        UNIVERSAL_RSA.decrypt(PaddingScheme::PKCS1v15Encrypt, &shared_secret.0);
+
+                    let shared_secret = match (verify_token, shared_secret) {
+                        (Ok(verify_token), Ok(shared_secret))
+                            if verify_token == UNIVERSAL_VERIFY_TOKEN[..] =>
+                        {
+                            shared_secret
+                        }
+                        _ => {
+                            self.disconnect("Invalid encryption challenge response.")
+                                .await?;
+                            return Ok(());
+                        }
+                    };
+
+                    if self.connection.update_encryption(&shared_secret).is_err() {
+                        self.disconnect("Unexpected shared secret key length.")
+                            .await?;
+                        return Ok(());
+                    }
+
+                    let config_clone = self.config.clone();
+                    let config = config_clone.read().await;
 
                     self.set_compression(256).await?;
 
