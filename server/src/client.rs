@@ -282,16 +282,18 @@ impl Client {
             },
             ClientPacket::Play(packet) => match packet {
                 ClientPlayPacket::PluginMessage { channel, data } => match channel.as_str() {
-                    "minecraft:brand" => {
-                        let brand = String::read_from_slice(&data.0);
-                        if let Ok(brand) = brand {
-                            debug!(
-                                "client brand of {} is {}",
-                                self.name.as_ref().unwrap(),
-                                brand
-                            )
-                        }
-                    }
+                    "minecraft:brand" => match String::read_from_slice(&data.0) {
+                        Ok(brand) => debug!(
+                            "client brand of {} is {}",
+                            self.name.as_ref().unwrap(),
+                            brand
+                        ),
+                        Err(err) => warn!(
+                            "failed to process client brand of {}: {:#}",
+                            self.name.as_ref().unwrap(),
+                            anyhow!(err)
+                        ),
+                    },
                     _ => debug!(
                         "received unknown plugin message (channel: {}, from: {})",
                         channel,
