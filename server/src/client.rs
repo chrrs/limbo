@@ -339,16 +339,7 @@ impl Client {
                         self.name()
                     ),
                 },
-                ClientPlayPacket::PlayerPosition { x, y, z, on_ground } => {
-                    trace!(
-                        "{} moved to {:.02}, {:.02}, {:.02} (grounded: {})",
-                        self.name(),
-                        x,
-                        y,
-                        z,
-                        on_ground
-                    );
-                }
+                ClientPlayPacket::PlayerPosition { x, y, z, on_ground } => {}
                 ClientPlayPacket::ClientSettings { .. } => {}
                 ClientPlayPacket::KeepAlive { .. } => {
                     // TODO: Check if the ID matches.
