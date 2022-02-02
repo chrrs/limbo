@@ -137,11 +137,7 @@ impl Client {
         let _ = self.stop.send(());
 
         if let State::Play = self.connection.state {
-            info!(
-                "client disconnected ({}, {})",
-                self.name.as_ref().unwrap(),
-                self.uuid.as_ref().unwrap()
-            );
+            info!("client disconnected ({}, {})", self.name(), self.uuid());
 
             ONLINE_PLAYERS.fetch_sub(1, Ordering::Relaxed);
         }
@@ -220,11 +216,7 @@ impl Client {
                         .await?;
                     self.connection.state = State::Play;
 
-                    info!(
-                        "client logged in ({}, {})",
-                        self.name.as_ref().unwrap(),
-                        self.uuid.as_ref().unwrap()
-                    );
+                    info!("client logged in ({}, {})", self.name(), self.uuid());
 
                     ONLINE_PLAYERS.fetch_add(1, Ordering::Relaxed);
 
@@ -283,27 +275,23 @@ impl Client {
             ClientPacket::Play(packet) => match packet {
                 ClientPlayPacket::PluginMessage { channel, data } => match channel.as_str() {
                     "minecraft:brand" => match String::read_from_slice(&data.0) {
-                        Ok(brand) => debug!(
-                            "client brand of {} is {}",
-                            self.name.as_ref().unwrap(),
-                            brand
-                        ),
+                        Ok(brand) => debug!("client brand of {} is {}", self.name(), brand),
                         Err(err) => warn!(
                             "failed to process client brand of {}: {:#}",
-                            self.name.as_ref().unwrap(),
+                            self.name(),
                             anyhow!(err)
                         ),
                     },
                     _ => debug!(
                         "received unknown plugin message (channel: {}, from: {})",
                         channel,
-                        self.name.as_ref().unwrap()
+                        self.name()
                     ),
                 },
                 ClientPlayPacket::PlayerPosition { x, y, z, on_ground } => {
                     trace!(
                         "{} moved to {:.02}, {:.02}, {:.02} (grounded: {})",
-                        self.name.as_ref().unwrap(),
+                        self.name(),
                         x,
                         y,
                         z,
@@ -370,7 +358,7 @@ impl Client {
         debug!(
             "sent plugin message (channel: {}, to: {})",
             channel,
-            self.name.as_ref().unwrap()
+            self.name()
         );
 
         Ok(())
@@ -408,5 +396,13 @@ impl Client {
         }
 
         Ok(())
+    }
+
+    pub fn name(&self) -> &str {
+        self.name.as_ref().unwrap()
+    }
+
+    pub fn uuid(&self) -> &Uuid {
+        self.uuid.as_ref().unwrap()
     }
 }
