@@ -210,7 +210,6 @@ impl Client {
 
                     // TODO: Encryption
 
-                    // TODO: Lower compression threshold.
                     self.set_compression(256).await?;
 
                     self.connection
