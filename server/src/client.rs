@@ -339,7 +339,7 @@ impl Client {
                         self.name()
                     ),
                 },
-                ClientPlayPacket::PlayerPosition { x, y, z, on_ground } => {}
+                ClientPlayPacket::PlayerPosition { .. } => {}
                 ClientPlayPacket::ClientSettings { .. } => {}
                 ClientPlayPacket::KeepAlive { .. } => {
                     // TODO: Check if the ID matches.
