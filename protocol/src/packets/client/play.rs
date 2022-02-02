@@ -3,6 +3,9 @@ use crate::{io::RawBytes, VarInt};
 packet! {
     #[derive(Debug)]
     pub enum ClientPlayPacket {
+        0x00 = TeleportConfirm {
+            id: VarInt,
+        },
         0x05 = ClientSettings {
             locale: String,
             view_distance: i8,
