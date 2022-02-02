@@ -8,7 +8,7 @@ use std::{
 };
 
 use anyhow::anyhow;
-use log::{debug, error, info, trace, warn};
+use log::{debug, error, info, warn};
 use once_cell::sync::Lazy;
 use protocol::{
     chat::Message,
