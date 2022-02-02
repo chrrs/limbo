@@ -12,7 +12,7 @@ use log::{debug, error, info, trace, warn};
 use protocol::{
     chat::Message,
     info::{PlayerInfo, ServerInfo, VERSION},
-    io::Raw,
+    io::{RawBytes, VarIntPrefixedVec},
     packets::{
         client::{
             handshake::ClientHandshakePacket, login::ClientLoginPacket, play::ClientPlayPacket,
@@ -25,8 +25,9 @@ use protocol::{
         State,
     },
     types::{GameMode, Position},
-    ProtocolError, Readable, VarInt, Writable,
+    PacketField, ReadError, VarInt,
 };
+use thiserror::Error;
 use tokio::{
     select,
     sync::{broadcast, mpsc, RwLock},
@@ -34,12 +35,22 @@ use tokio::{
 };
 use uuid::Uuid;
 
-use crate::{config::Config, connection::Connection, shutdown::Shutdown, ServerError};
+use crate::{
+    config::Config,
+    connection::{Connection, ReceiveError, SendError},
+    shutdown::Shutdown,
+};
 
 const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
 
 // TODO: Find a better place to store this variable.
 pub static ONLINE_PLAYERS: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(Debug, Error)]
+pub enum PacketProcessingError {
+    #[error("failed to send response packet")]
+    Send(#[from] SendError),
+}
 
 pub struct Client {
     config: Arc<RwLock<Config>>,
@@ -101,13 +112,13 @@ impl Client {
                             }
                         },
                         Ok(None) => self.disconnected = true,
-                        Err(ServerError::Protocol(ProtocolError::InvalidPacketId(id))) => {
+                        Err(ReceiveError::Decode(ReadError::UnrecognizedPacketId(id))) => {
                             debug!(
                                 "received unrecognized packet (state: {:?}, id: {:#04x})",
                                 self.connection.state, id
                             );
                         },
-                        Err(ServerError::ConnectionReset) => self.disconnected = true,
+                        Err(ReceiveError::ConnectionClosed) => self.disconnected = true,
                         Err(err) => {
                             warn!("failed to read packet: {:#}", anyhow!(err));
                             let _ = self.disconnect("Bad packet.").await;
@@ -136,7 +147,7 @@ impl Client {
         }
     }
 
-    async fn process_packet(&mut self, packet: ClientPacket) -> Result<(), ServerError> {
+    async fn process_packet(&mut self, packet: ClientPacket) -> Result<(), PacketProcessingError> {
         match packet {
             ClientPacket::Handshake(packet) => match packet {
                 ClientHandshakePacket::Handshake {
@@ -189,9 +200,9 @@ impl Client {
                     let config = config_clone.read().await;
 
                     if name.is_empty() || name.len() > 16 {
-                        return self
-                            .disconnect("Usernames should be between 1-16 characters long.")
-                            .await;
+                        self.disconnect("Usernames should be between 1-16 characters long.")
+                            .await?;
+                        return Ok(());
                     }
 
                     self.name = Some(name);
@@ -226,9 +237,11 @@ impl Client {
                             hardcore: true,
                             gamemode: GameMode::Survival,
                             previous_gamemode: None,
-                            world_names: vec!["limbo".to_string()],
-                            dimension_codec: Raw::new(&include_bytes!("./dimension_codec.nbt")[..]),
-                            dimension: Raw::new(&include_bytes!("./dimension.nbt")[..]),
+                            world_names: VarIntPrefixedVec(vec!["limbo".to_string()]),
+                            dimension_codec: RawBytes::new(
+                                &include_bytes!("./dimension_codec.nbt")[..],
+                            ),
+                            dimension: RawBytes::new(&include_bytes!("./dimension.nbt")[..]),
                             world_name: "limbo".to_string(),
                             hashed_seed: 0,
                             max_players: VarInt(1),
@@ -271,7 +284,7 @@ impl Client {
             ClientPacket::Play(packet) => match packet {
                 ClientPlayPacket::PluginMessage { channel, data } => match channel.as_str() {
                     "minecraft:brand" => {
-                        let brand = String::decode(&data.0);
+                        let brand = String::read_from_slice(&data.0);
                         if let Ok(brand) = brand {
                             debug!(
                                 "client brand of {} is {}",
@@ -307,7 +320,7 @@ impl Client {
         Ok(())
     }
 
-    async fn set_compression(&mut self, threshold: usize) -> Result<(), ServerError> {
+    async fn set_compression(&mut self, threshold: usize) -> Result<(), SendError> {
         self.connection
             .write_packet(ServerPacket::Login(ServerLoginPacket::SetCompression {
                 threshold: VarInt(threshold as i32),
@@ -341,15 +354,15 @@ impl Client {
         });
     }
 
-    async fn send_plugin_message<S: Display + ToString, D: Writable>(
+    async fn send_plugin_message<S: Display + ToString, D: PacketField>(
         &mut self,
         channel: S,
         data: &D,
-    ) -> Result<(), ServerError> {
+    ) -> Result<(), SendError> {
         self.connection
             .write_packet(ServerPacket::Play(ServerPlayPacket::PluginMessage {
                 channel: channel.to_string(),
-                data: Raw::new(data.encode()?),
+                data: RawBytes::new(data.write_to_vec()?),
             }))
             .await?;
 
@@ -362,7 +375,7 @@ impl Client {
         Ok(())
     }
 
-    async fn disconnect<S: Display + ToString>(&mut self, reason: S) -> Result<(), ServerError> {
+    async fn disconnect<S: Display + ToString>(&mut self, reason: S) -> Result<(), SendError> {
         // TODO: Actually disconnect when this function is called, instead of after the next packet.
 
         self.disconnected = true;

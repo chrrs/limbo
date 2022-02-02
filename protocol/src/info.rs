@@ -1,11 +1,11 @@
 use std::{
     borrow::Cow,
-    io::{Cursor, Write},
+    io::{Read, Write},
 };
 
 use serde::{Deserialize, Serialize};
 
-use crate::{chat::Message, ProtocolError, Readable, Writable};
+use crate::{chat::Message, FieldReadError, FieldWriteError, PacketField};
 
 pub const VERSION: VersionInfo = VersionInfo {
     name: Cow::Borrowed("1.18.1"),
@@ -29,14 +29,12 @@ impl ServerInfo {
     }
 }
 
-impl Readable for ServerInfo {
-    fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<ServerInfo, ProtocolError> {
+impl PacketField for ServerInfo {
+    fn read_from(buffer: &mut dyn Read) -> Result<ServerInfo, FieldReadError> {
         Ok(serde_json::from_str(&String::read_from(buffer)?)?)
     }
-}
 
-impl Writable for ServerInfo {
-    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), FieldWriteError> {
         serde_json::to_string(self)?.write_to(buffer)
     }
 }

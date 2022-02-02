@@ -4,8 +4,6 @@ use anyhow::anyhow;
 use client::Client;
 use connection::Connection;
 use log::{debug, error, info, warn, LevelFilter};
-use protocol::ProtocolError;
-use thiserror::Error;
 use tokio::{
     net::TcpListener,
     select, signal,
@@ -24,18 +22,6 @@ mod logging;
 mod shutdown;
 
 const CONFIG_PATH: &str = "limbo.toml";
-
-#[derive(Debug, Error)]
-pub enum ServerError {
-    #[error("connection reset by peer")]
-    ConnectionReset,
-
-    #[error("protocol error")]
-    Protocol(#[from] ProtocolError),
-
-    #[error("io error")]
-    Io(#[from] std::io::Error),
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

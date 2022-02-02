@@ -1,11 +1,11 @@
 use std::{
     fmt::Display,
-    io::{Cursor, Write},
+    io::{Read, Write},
 };
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use super::{ProtocolError, Readable, Writable};
+use crate::{FieldReadError, FieldWriteError, PacketField};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VarInt(pub i32);
@@ -16,8 +16,8 @@ impl Display for VarInt {
     }
 }
 
-impl Readable for VarInt {
-    fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Self, ProtocolError> {
+impl PacketField for VarInt {
+    fn read_from(buffer: &mut dyn Read) -> Result<Self, FieldReadError> {
         let mut value = 0;
         let mut length = 0;
 
@@ -27,7 +27,7 @@ impl Readable for VarInt {
             length += 1;
 
             if length > 5 {
-                break Err(ProtocolError::VariableTooLarge);
+                break Err(FieldReadError::VariableTooLarge);
             }
 
             if (byte & 0x80) == 0 {
@@ -35,10 +35,8 @@ impl Readable for VarInt {
             }
         }
     }
-}
 
-impl Writable for VarInt {
-    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), FieldWriteError> {
         let mut value = self.0 as u32;
 
         loop {

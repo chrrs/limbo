@@ -1,6 +1,6 @@
 use crate::{
     chat::Message,
-    io::Raw,
+    io::{RawBytes, VarIntPrefixedVec},
     types::{GameMode, Position},
     VarInt,
 };
@@ -10,7 +10,7 @@ packet! {
     pub enum ServerPlayPacket {
         0x18 = PluginMessage {
             channel: String,
-            data: Raw,
+            data: RawBytes,
         },
         0x21 = KeepAlive {
             id: u64,
@@ -20,10 +20,10 @@ packet! {
             hardcore: bool,
             gamemode: GameMode,
             previous_gamemode: Option<GameMode>,
-            world_names: Vec<String>,
+            world_names: VarIntPrefixedVec<String>,
             // TODO: Abstract these away better.
-            dimension_codec: Raw,
-            dimension: Raw,
+            dimension_codec: RawBytes,
+            dimension: RawBytes,
             world_name: String,
             hashed_seed: i64,
             max_players: VarInt,

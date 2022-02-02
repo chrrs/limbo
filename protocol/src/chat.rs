@@ -1,11 +1,11 @@
 use std::{
     borrow::Cow,
-    io::{Cursor, Write},
+    io::{Read, Write},
 };
 
 use serde::{Deserialize, Serialize};
 
-use crate::{ProtocolError, Readable, Writable};
+use crate::{FieldReadError, FieldWriteError, PacketField};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
@@ -18,14 +18,12 @@ impl Message {
     }
 }
 
-impl Readable for Message {
-    fn read_from(buffer: &mut Cursor<&[u8]>) -> Result<Message, ProtocolError> {
+impl PacketField for Message {
+    fn read_from(buffer: &mut dyn Read) -> Result<Message, FieldReadError> {
         Ok(serde_json::from_str(&String::read_from(buffer)?)?)
     }
-}
 
-impl Writable for Message {
-    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), FieldWriteError> {
         serde_json::to_string(self)?.write_to(buffer)
     }
 }

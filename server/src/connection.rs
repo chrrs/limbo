@@ -5,14 +5,51 @@ use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use log::trace;
 use protocol::{
     packets::{client::ClientPacket, server::ServerPacket, State},
-    Readable, VarInt, Writable,
+    PacketField, VarInt,
 };
+use thiserror::Error;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufWriter},
     net::TcpStream,
 };
 
-use crate::ServerError;
+#[derive(Debug, Error)]
+pub enum ReceiveError {
+    #[error("connection closed")]
+    ConnectionClosed,
+
+    #[error(
+        "invalid reported decompressed packet length (reported: {reported}, actual: {actual})"
+    )]
+    InvalidReportedLength { reported: usize, actual: usize },
+
+    #[error("packet length decoding error")]
+    PacketLengthEncode(#[from] protocol::FieldReadError),
+
+    #[error("decoding error")]
+    Decode(#[from] protocol::ReadError),
+
+    #[error("failed to read from stream")]
+    Read(#[from] std::io::Error),
+
+    #[error("decompression error")]
+    Decompression(#[source] std::io::Error),
+}
+
+#[derive(Debug, Error)]
+pub enum SendError {
+    #[error("packet length encoding error")]
+    PacketLengthEncode(#[from] protocol::FieldWriteError),
+
+    #[error("encoding error")]
+    Encode(#[from] protocol::WriteError),
+
+    #[error("failed to write to stream")]
+    Write(#[from] std::io::Error),
+
+    #[error("compressioon error")]
+    Compression(#[source] std::io::Error),
+}
 
 pub struct Connection {
     stream: BufWriter<TcpStream>,
@@ -35,7 +72,7 @@ impl Connection {
         }
     }
 
-    pub async fn read_packet(&mut self) -> Result<Option<ClientPacket>, ServerError> {
+    pub async fn read_packet(&mut self) -> Result<Option<ClientPacket>, ReceiveError> {
         loop {
             if let Some(packet) = self.parse_packet()? {
                 return Ok(Some(packet));
@@ -45,13 +82,13 @@ impl Connection {
                 if self.buffer.is_empty() {
                     return Ok(None);
                 } else {
-                    return Err(ServerError::ConnectionReset);
+                    return Err(ReceiveError::ConnectionClosed);
                 }
             }
         }
     }
 
-    pub fn parse_packet(&mut self) -> Result<Option<ClientPacket>, ServerError> {
+    pub fn parse_packet(&mut self) -> Result<Option<ClientPacket>, ReceiveError> {
         let (offset, length) = {
             let mut buf = Cursor::new(&self.buffer[..]);
             if let Ok(length) = VarInt::read_from(&mut buf) {
@@ -75,9 +112,18 @@ impl Connection {
             } else {
                 trace!("decompressing packet of {} bytes", data_length);
                 let mut decoder = ZlibDecoder::new(&mut buf);
-                decoder.read_to_end(&mut self.packet_buf)?;
-                // TODO: Check length.
-                let packet = ClientPacket::decode(self.state, &mut Cursor::new(&self.packet_buf));
+                decoder
+                    .read_to_end(&mut self.packet_buf)
+                    .map_err(ReceiveError::Decompression)?;
+
+                if data_length as usize != self.packet_buf.len() {
+                    return Err(ReceiveError::InvalidReportedLength {
+                        reported: data_length as usize,
+                        actual: self.packet_buf.len(),
+                    });
+                }
+
+                let packet = ClientPacket::decode(self.state, &mut &self.packet_buf[..]);
                 self.packet_buf.clear();
                 packet
             }
@@ -93,7 +139,7 @@ impl Connection {
         Ok(Some(packet))
     }
 
-    pub async fn write_packet(&mut self, packet: ServerPacket) -> Result<(), ServerError> {
+    pub async fn write_packet(&mut self, packet: ServerPacket) -> Result<(), SendError> {
         packet.encode_to(&mut self.packet_buf)?;
 
         if let Some(threshold) = self.compression_threshold {
@@ -111,7 +157,7 @@ impl Connection {
         Ok(())
     }
 
-    async fn write_compressed(&mut self, threshold: usize) -> Result<(), ServerError> {
+    async fn write_compressed(&mut self, threshold: usize) -> Result<(), SendError> {
         let length = self.packet_buf.len();
 
         if length < threshold {
@@ -121,8 +167,10 @@ impl Connection {
             trace!("compressing packet of {} bytes", length);
             VarInt(length as i32).write_to(&mut self.compression_buf)?;
             let mut encoder = ZlibEncoder::new(&mut self.compression_buf, Compression::default());
-            encoder.write_all(&self.packet_buf)?;
-            encoder.finish()?;
+            encoder
+                .write_all(&self.packet_buf)
+                .map_err(SendError::Compression)?;
+            encoder.finish().map_err(SendError::Compression)?;
         }
 
         let mut buf = [0u8; 5];
@@ -139,7 +187,7 @@ impl Connection {
         Ok(())
     }
 
-    async fn write_uncompressed(&mut self) -> Result<(), ServerError> {
+    async fn write_uncompressed(&mut self) -> Result<(), SendError> {
         let mut buf = [0u8; 5];
         let mut length_bytes = Cursor::new(&mut buf[..]);
         VarInt(self.packet_buf.len() as i32).write_to(&mut length_bytes)?;

@@ -1,4 +1,4 @@
-use crate::{io::Raw, VarInt};
+use crate::{io::RawBytes, VarInt};
 
 packet! {
     #[derive(Debug)]
@@ -15,7 +15,7 @@ packet! {
         },
         0x0a = PluginMessage {
             channel: String,
-            data: Raw,
+            data: RawBytes,
         },
         0x0f = KeepAlive {
             id: u64,

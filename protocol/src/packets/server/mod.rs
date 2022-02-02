@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::{ProtocolError, Writable};
+use crate::{Packet, WriteError};
 
 use self::{login::ServerLoginPacket, play::ServerPlayPacket, status::ServerStatusPacket};
 
@@ -16,7 +16,7 @@ pub enum ServerPacket {
 }
 
 impl ServerPacket {
-    pub fn encode_to(&self, buffer: &mut dyn Write) -> Result<(), ProtocolError> {
+    pub fn encode_to(&self, buffer: &mut dyn Write) -> Result<(), WriteError> {
         match self {
             ServerPacket::Status(packet) => packet.write_to(buffer)?,
             ServerPacket::Login(packet) => packet.write_to(buffer)?,
