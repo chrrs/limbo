@@ -129,6 +129,41 @@ macro_rules! packet_enum {
     };
 }
 
+macro_rules! packet_field {
+    {
+        $(#[$meta:meta])*
+        $vis:vis struct $name:ident {
+            $($field_vis:vis $field:ident: $typ:ident$(<$generics:ident>)?),*
+            $(,)?
+        }
+    } => {
+        $(#[$meta])*
+        $vis struct $name {
+            $($field_vis $field: $typ$(<$generics>)?),*
+        }
+
+        impl crate::PacketField for $name {
+            fn read_from(buffer: &mut dyn std::io::Read) -> Result<Self, crate::FieldReadError> {
+                Ok(Self {
+                    $(
+                        $field: $typ::read_from(buffer)
+                            .map_err(|e| crate::FieldReadError::SubField(stringify!($field), Box::new(e)))?,
+                    )*
+                })
+            }
+
+            fn write_to(&self, buffer: &mut dyn std::io::Write) -> Result<(), crate::FieldWriteError> {
+                $(
+                    self.$field.write_to(buffer)
+                        .map_err(|e| crate::FieldWriteError::SubField(stringify!($field), Box::new(e)))?;
+                )*
+
+                Ok(())
+            }
+        }
+    };
+}
+
 pub mod chat;
 pub mod info;
 pub mod io;
@@ -164,6 +199,9 @@ pub enum FieldWriteError {
 
     #[error("write error")]
     WriteError(#[from] std::io::Error),
+
+    #[error("failed to write sub-field '{0}'")]
+    SubField(&'static str, #[source] Box<FieldWriteError>),
 }
 
 #[derive(Debug, Error)]
@@ -182,6 +220,9 @@ pub enum FieldReadError {
 
     #[error("read error")]
     ReadError(#[from] std::io::Error),
+
+    #[error("failed to read sub-field '{0}'")]
+    SubField(&'static str, #[source] Box<FieldReadError>),
 }
 
 pub trait Packet: Sized {
