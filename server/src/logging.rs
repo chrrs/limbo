@@ -22,6 +22,8 @@ pub fn init(level_filter: LevelFilter) -> Result<(), fern::InitError> {
             ))
         })
         .level(level_filter)
+        .level_for("ureq", LevelFilter::Info)
+        .level_for("rustls", LevelFilter::Info)
         .chain(std::io::stdout())
         .apply()?;
 

@@ -41,6 +41,7 @@ use uuid::Uuid;
 use crate::{
     config::Config,
     connection::{Connection, ReceiveError, SendError},
+    mojang::{self, AuthenticationResponse},
     shutdown::Shutdown,
 };
 
@@ -215,7 +216,6 @@ impl Client {
                     }
 
                     self.name = Some(name);
-                    self.uuid = Some(Uuid::new_v4());
 
                     self.connection
                         .write_packet(ServerPacket::Login(ServerLoginPacket::EncryptionRequest {
@@ -257,6 +257,23 @@ impl Client {
                     let config = config_clone.read().await;
 
                     self.set_compression(256).await?;
+
+                    let response = match mojang::authenticate(
+                        "",
+                        &shared_secret,
+                        &UNIVERSAL_ENCODED_RSA_PUBLIC_KEY,
+                        self.name(),
+                    ) {
+                        Ok(response) => response,
+                        Err(err) => {
+                            error!("failed to authenticate {}: {:#}", self.name(), anyhow!(err));
+                            self.disconnect("Could not validate session.").await?;
+                            return Ok(());
+                        }
+                    };
+
+                    let AuthenticationResponse { id, .. } = response;
+                    self.uuid = Some(id);
 
                     self.connection
                         .write_packet(ServerPacket::Login(ServerLoginPacket::Success {

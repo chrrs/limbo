@@ -20,6 +20,7 @@ mod config;
 mod connection;
 mod logging;
 mod shutdown;
+mod mojang;
 
 const CONFIG_PATH: &str = "limbo.toml";
 
