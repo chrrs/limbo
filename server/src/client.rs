@@ -367,7 +367,7 @@ impl Client {
             ClientPacket::Play(packet) => match packet {
                 ClientPlayPacket::TeleportConfirm { .. } => {}
                 ClientPlayPacket::PluginMessage { channel, data } => match channel.as_str() {
-                    "minecraft:brand" => match String::read_from_slice(&data.0) {
+                    "minecraft:brand" => match String::read_from(&mut &data.0[..]) {
                         Ok(brand) => debug!("client brand of {} is {}", self.name(), brand),
                         Err(err) => warn!(
                             "failed to process client brand of {}: {:#}",

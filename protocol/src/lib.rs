@@ -1,5 +1,5 @@
 use std::{
-    io::{Cursor, Read, Write},
+    io::{Read, Write},
     string::FromUtf8Error,
 };
 
@@ -234,10 +234,6 @@ pub trait Packet: Sized {
 pub trait PacketField: Sized {
     fn read_from(buffer: &mut dyn Read) -> Result<Self, FieldReadError>;
     fn write_to(&self, buffer: &mut dyn Write) -> Result<(), FieldWriteError>;
-
-    fn read_from_slice(buffer: &[u8]) -> Result<Self, FieldReadError> {
-        Self::read_from(&mut Cursor::new(buffer))
-    }
 
     fn write_to_vec(&self) -> Result<Vec<u8>, FieldWriteError> {
         let mut buf = Vec::new();
