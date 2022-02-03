@@ -140,3 +140,25 @@ impl PacketField for RawBytes {
         Ok(buffer.write_all(&self.0)?)
     }
 }
+
+#[derive(Debug)]
+pub struct BooleanPrefixedOption<T>(pub Option<T>);
+
+impl<T: PacketField> PacketField for BooleanPrefixedOption<T> {
+    fn read_from(buffer: &mut dyn Read) -> Result<BooleanPrefixedOption<T>, FieldReadError> {
+        if bool::read_from(buffer)? {
+            Ok(BooleanPrefixedOption(Some(T::read_from(buffer)?)))
+        } else {
+            Ok(BooleanPrefixedOption(None))
+        }
+    }
+
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), FieldWriteError> {
+        self.0.is_some().write_to(buffer)?;
+        if let Some(value) = &self.0 {
+            value.write_to(buffer)?;
+        }
+
+        Ok(())
+    }
+}
