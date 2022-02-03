@@ -28,6 +28,7 @@ pub struct AuthenticationResponse {
 pub struct PlayerProperty {
     pub name: String,
     pub value: String,
+    pub signature: Option<String>,
 }
 
 fn hash(server_id: &str, shared_secret: &[u8], encoded_public_key: &[u8]) -> String {
