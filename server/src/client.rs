@@ -182,7 +182,7 @@ impl Client {
             },
             ClientPacket::Status(packet) => match packet {
                 ClientStatusPacket::Request {} => {
-                    let config = self.config.read().await;
+                    let mut config = self.config.write().await;
 
                     let player_info = if config.info.hide_player_count {
                         None
@@ -198,6 +198,7 @@ impl Client {
                             VERSION,
                             player_info,
                             Message::new(config.info.motd.clone()),
+                            config.info.icon(),
                         ),
                     });
 

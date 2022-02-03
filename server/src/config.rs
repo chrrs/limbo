@@ -1,6 +1,7 @@
 use std::{fs::OpenOptions, io::Write, path::Path};
 
-use log::LevelFilter;
+use anyhow::anyhow;
+use log::{warn, LevelFilter};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -58,6 +59,38 @@ pub struct Info {
     pub hide_player_count: bool,
     pub motd: String,
     pub name: String,
+    pub icon: String,
+
+    #[serde(skip_serializing, skip_deserializing)]
+    icon_cache: Option<Vec<u8>>,
+}
+
+impl Info {
+    pub fn icon(&mut self) -> Option<&[u8]> {
+        if let Some(ref icon) = self.icon_cache {
+            return if icon.is_empty() { None } else { Some(icon) };
+        }
+
+        let path = Path::new(&self.icon);
+
+        if !path.exists() {
+            warn!("server favicon file does not exist");
+            self.icon_cache = Some(Vec::new());
+            return None;
+        }
+
+        match std::fs::read(path) {
+            Ok(bytes) => {
+                self.icon_cache = Some(bytes);
+                self.icon_cache.as_ref().map(|v| &v[..])
+            }
+            Err(err) => {
+                warn!("failed to read server favicon file: {:#}", anyhow!(err));
+                self.icon_cache = Some(Vec::new());
+                None
+            }
+        }
+    }
 }
 
 impl Default for Info {
@@ -68,6 +101,8 @@ impl Default for Info {
             hide_player_count: false,
             motd: "A Limbo Server".to_string(),
             name: "Limbo".to_string(),
+            icon: "icon.png".to_string(),
+            icon_cache: None,
         }
     }
 }

@@ -17,6 +17,9 @@ pub struct ServerInfo {
     version: VersionInfo,
     players: Option<ServerPlayerInfo>,
     description: Message,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    favicon: Option<String>,
 }
 
 impl ServerInfo {
@@ -24,11 +27,13 @@ impl ServerInfo {
         version: VersionInfo,
         players: Option<ServerPlayerInfo>,
         motd: Message,
+        favicon: Option<&[u8]>,
     ) -> ServerInfo {
         ServerInfo {
             version,
             players,
             description: motd,
+            favicon: favicon.map(|data| format!("data:image/png;base64,{}", base64::encode(data))),
         }
     }
 }
