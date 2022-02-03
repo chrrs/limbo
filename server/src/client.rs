@@ -12,8 +12,8 @@ use log::{debug, error, info, warn};
 use once_cell::sync::Lazy;
 use protocol::{
     chat::Message,
-    info::{PlayerInfo, ServerInfo, VERSION},
-    io::{RawBytes, VarIntPrefixedVec},
+    info::{ServerInfo, ServerPlayerInfo, VERSION},
+    io::{BooleanPrefixedOption, RawBytes, VarIntPrefixedVec},
     packets::{
         client::{
             handshake::ClientHandshakePacket, login::ClientLoginPacket, play::ClientPlayPacket,
@@ -25,6 +25,7 @@ use protocol::{
         },
         State,
     },
+    player_info::{AddPlayerAction, AddPlayerProperty, PlayerInfo},
     types::{GameMode, Position},
     PacketField, ReadError, VarInt,
 };
@@ -186,7 +187,7 @@ impl Client {
                     let player_info = if config.info.hide_player_count {
                         None
                     } else {
-                        Some(PlayerInfo::simple(
+                        Some(ServerPlayerInfo::simple(
                             ONLINE_PLAYERS.load(Ordering::Relaxed) as isize,
                             config.info.max_players,
                         ))
@@ -272,7 +273,7 @@ impl Client {
                         }
                     };
 
-                    let AuthenticationResponse { id, .. } = response;
+                    let AuthenticationResponse { id, properties } = response;
                     self.uuid = Some(id);
 
                     self.connection
@@ -336,6 +337,29 @@ impl Client {
                                 dismount_vehicle: true,
                             },
                         ))
+                        .await?;
+
+                    // TODO: Abstract this away in some kind of TAB-screen handler.
+                    self.connection
+                        .write_packet(ServerPacket::Play(ServerPlayPacket::PlayerInfo {
+                            info: PlayerInfo::AddPlayer(VarIntPrefixedVec(vec![AddPlayerAction {
+                                uuid: *self.uuid(),
+                                name: self.name().to_string(),
+                                properties: VarIntPrefixedVec(
+                                    properties
+                                        .into_iter()
+                                        .map(|p| AddPlayerProperty {
+                                            name: p.name,
+                                            value: p.value,
+                                            signature: BooleanPrefixedOption(p.signature),
+                                        })
+                                        .collect(),
+                                ),
+                                game_mode: GameMode::Survival,
+                                ping: VarInt(0), // TODO: Appropriately set this.
+                                display_name: BooleanPrefixedOption(None),
+                            }])),
+                        }))
                         .await?;
                 }
             },

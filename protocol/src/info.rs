@@ -15,12 +15,16 @@ pub const VERSION: VersionInfo = VersionInfo {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerInfo {
     version: VersionInfo,
-    players: Option<PlayerInfo>,
+    players: Option<ServerPlayerInfo>,
     description: Message,
 }
 
 impl ServerInfo {
-    pub fn new(version: VersionInfo, players: Option<PlayerInfo>, motd: Message) -> ServerInfo {
+    pub fn new(
+        version: VersionInfo,
+        players: Option<ServerPlayerInfo>,
+        motd: Message,
+    ) -> ServerInfo {
         ServerInfo {
             version,
             players,
@@ -40,14 +44,14 @@ impl PacketField for ServerInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PlayerInfo {
+pub struct ServerPlayerInfo {
     max: isize,
     online: isize,
 }
 
-impl PlayerInfo {
-    pub fn simple(online: isize, max: isize) -> PlayerInfo {
-        PlayerInfo { online, max }
+impl ServerPlayerInfo {
+    pub fn simple(online: isize, max: isize) -> ServerPlayerInfo {
+        ServerPlayerInfo { online, max }
     }
 }
 

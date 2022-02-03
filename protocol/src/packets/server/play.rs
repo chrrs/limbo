@@ -1,6 +1,7 @@
 use crate::{
     chat::Message,
     io::{RawBytes, VarIntPrefixedVec},
+    player_info::PlayerInfo,
     types::{GameMode, Position},
     VarInt,
 };
@@ -36,6 +37,9 @@ packet! {
         },
         0x1a = Disconnect {
             reason: Message,
+        },
+        0x36 = PlayerInfo {
+            info: PlayerInfo,
         },
         0x38 = PlayerPositionAndLook {
             x: f64,
