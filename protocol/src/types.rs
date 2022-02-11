@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{FieldReadError, FieldWriteError, PacketField};
+use crate::{FieldReadError, FieldWriteError, PacketField, VarInt};
 
 packet_enum! {
     #[derive(Debug, Clone, Copy)]
@@ -61,5 +61,19 @@ impl PacketField for Position {
             | ((self.y as u64) & 0xfff)
             | (((self.z as u64) & 0x3ffffff) << 12))
             .write_to(buffer)
+    }
+}
+
+packet_enum! {
+    #[derive(Debug, Clone, Copy)]
+    pub enum Pose: VarInt {
+        Standing = VarInt(0),
+        FallFlying = VarInt(1),
+        Sleeping = VarInt(2),
+        Swimming = VarInt(3),
+        SpinAttack = VarInt(4),
+        Sneaking = VarInt(5),
+        LongJumping = VarInt(6),
+        Dying = VarInt(7),
     }
 }

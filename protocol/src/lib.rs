@@ -167,6 +167,7 @@ macro_rules! packet_field {
 pub mod chat;
 pub mod info;
 pub mod io;
+pub mod metadata;
 pub mod packets;
 pub mod player_info;
 pub mod types;
