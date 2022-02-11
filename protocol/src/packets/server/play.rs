@@ -1,6 +1,7 @@
 use crate::{
     chat::Message,
     io::{RawBytes, VarIntPrefixedVec},
+    metadata::EntityMetadata,
     player_info::PlayerInfo,
     types::{GameMode, Position},
     VarInt,
@@ -54,6 +55,10 @@ packet! {
         0x4b = SpawnPosition {
             location: Position,
             angle: f32,
-        }
+        },
+        0x4d = EntityMetadata {
+            id: VarInt,
+            metadata: EntityMetadata,
+        },
     }
 }

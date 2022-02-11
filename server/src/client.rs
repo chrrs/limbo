@@ -14,6 +14,7 @@ use protocol::{
     chat::Message,
     info::{ServerInfo, ServerPlayerInfo, VERSION},
     io::{BooleanPrefixedOption, RawBytes, VarIntPrefixedVec},
+    metadata::{EntityMetadata, MetaIndex, MetaType},
     packets::{
         client::{
             handshake::ClientHandshakePacket, login::ClientLoginPacket, play::ClientPlayPacket,
@@ -382,7 +383,21 @@ impl Client {
                     ),
                 },
                 ClientPlayPacket::PlayerPosition { .. } => {}
-                ClientPlayPacket::ClientSettings { .. } => {}
+                ClientPlayPacket::ClientSettings {
+                    displayed_skin_parts,
+                    main_hand,
+                    ..
+                } => {
+                    self.connection
+                        .write_packet(ServerPacket::Play(ServerPlayPacket::EntityMetadata {
+                            // TODO: Don't hardcode the entity ID.
+                            id: VarInt(0),
+                            metadata: EntityMetadata::new()
+                                .with(MetaIndex::SkinParts, MetaType::Byte(displayed_skin_parts))
+                                .with(MetaIndex::MainHand, MetaType::Byte(main_hand.0 as u8)),
+                        }))
+                        .await?;
+                }
                 ClientPlayPacket::KeepAlive { .. } => {
                     // TODO: Check if the ID matches.
                 }
