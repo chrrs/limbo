@@ -241,3 +241,13 @@ pub trait PacketField: Sized {
         Ok(buf)
     }
 }
+
+impl<T: PacketField> PacketField for &T {
+    fn read_from(_: &mut dyn Read) -> Result<Self, FieldReadError> {
+        panic!("can't deserialize into a reference")
+    }
+
+    fn write_to(&self, buffer: &mut dyn Write) -> Result<(), FieldWriteError> {
+        (*self).write_to(buffer)
+    }
+}
