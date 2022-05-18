@@ -60,7 +60,7 @@ pub struct Connection {
     stream: BufWriter<TcpStream>,
     packet_buf: Vec<u8>,
     compression_buf: Vec<u8>,
-    encryption_buf: Vec<u8>,
+    staging_buf: Vec<u8>,
     buffer: BytesMut,
     pub state: State,
     pub compression_threshold: Option<usize>,
@@ -73,7 +73,7 @@ impl Connection {
             stream: BufWriter::new(stream),
             packet_buf: Vec::new(),
             compression_buf: Vec::new(),
-            encryption_buf: Vec::new(),
+            staging_buf: Vec::new(),
             buffer: BytesMut::new(),
             state: State::Handshake,
             compression_threshold: None,
@@ -167,18 +167,26 @@ impl Connection {
         packet.encode_to(&mut self.packet_buf)?;
 
         if let Some(threshold) = self.compression_threshold {
-            self.write_compressed(threshold).await?;
+            if threshold < self.packet_buf.len() {
+                stage_compressed_packet_into(
+                    &mut self.compression_buf,
+                    &mut self.staging_buf,
+                    &self.packet_buf,
+                )?;
+            } else {
+                stage_packet_into(&mut self.staging_buf, &self.packet_buf)?;
+            }
         } else {
-            self.write_uncompressed().await?;
+            stage_packet_into(&mut self.staging_buf, &self.packet_buf)?;
         }
 
         if let Some(cipher) = &mut self.cipher {
-            cipher.1.encrypt(&mut self.encryption_buf);
+            cipher.1.encrypt(&mut self.staging_buf);
         }
 
-        self.stream.write(&self.encryption_buf).await?;
+        self.stream.write_all(&self.staging_buf).await?;
         self.stream.flush().await?;
-        self.encryption_buf.clear();
+        self.staging_buf.clear();
 
         trace!("sent packet: {:?}", packet);
 
@@ -186,45 +194,38 @@ impl Connection {
 
         Ok(())
     }
+}
 
-    async fn write_compressed(&mut self, threshold: usize) -> Result<(), SendError> {
-        let length = self.packet_buf.len();
+// TODO: Ideally, these should be struct methods, but the borrow checker doesn't like that.
+fn stage_compressed_packet_into(
+    mut compression_buf: &mut Vec<u8>,
+    staging_buf: &mut Vec<u8>,
+    packet_buf: &[u8],
+) -> Result<(), SendError> {
+    let length = packet_buf.len();
 
-        if length < threshold {
-            VarInt(0).write_to(&mut self.compression_buf)?;
-            self.compression_buf.extend_from_slice(&self.packet_buf);
-        } else {
-            trace!("compressing packet of {} bytes", length);
-            VarInt(length as i32).write_to(&mut self.compression_buf)?;
-            let mut encoder = ZlibEncoder::new(&mut self.compression_buf, Compression::default());
-            encoder
-                .write_all(&self.packet_buf)
-                .map_err(SendError::Compression)?;
-            encoder.finish().map_err(SendError::Compression)?;
-        }
+    trace!("compressing packet of {} bytes", length);
+    VarInt(length as i32).write_to(compression_buf)?;
+    let mut encoder = ZlibEncoder::new(&mut compression_buf, Compression::default());
+    encoder
+        .write_all(packet_buf)
+        .map_err(SendError::Compression)?;
+    encoder.finish().map_err(SendError::Compression)?;
 
-        let mut buf = [0u8; 5];
-        let mut length_bytes = Cursor::new(&mut buf[..]);
-        VarInt(self.compression_buf.len() as i32).write_to(&mut length_bytes)?;
-        let position = length_bytes.position() as usize;
+    stage_packet_into(staging_buf, compression_buf)?;
+    compression_buf.clear();
 
-        self.encryption_buf.extend_from_slice(&buf[..position]);
-        self.encryption_buf.extend_from_slice(&self.compression_buf);
+    Ok(())
+}
 
-        self.compression_buf.clear();
+fn stage_packet_into(staging_buf: &mut Vec<u8>, packet_buf: &[u8]) -> Result<(), SendError> {
+    let mut buf = [0u8; 5];
+    let mut length_bytes = Cursor::new(&mut buf[..]);
+    VarInt(packet_buf.len() as i32).write_to(&mut length_bytes)?;
+    let position = length_bytes.position() as usize;
 
-        Ok(())
-    }
+    staging_buf.extend_from_slice(&buf[..position]);
+    staging_buf.extend_from_slice(packet_buf);
 
-    async fn write_uncompressed(&mut self) -> Result<(), SendError> {
-        let mut buf = [0u8; 5];
-        let mut length_bytes = Cursor::new(&mut buf[..]);
-        VarInt(self.packet_buf.len() as i32).write_to(&mut length_bytes)?;
-        let position = length_bytes.position() as usize;
-
-        self.encryption_buf.extend_from_slice(&buf[..position]);
-        self.encryption_buf.extend_from_slice(&self.packet_buf);
-
-        Ok(())
-    }
+    Ok(())
 }
