@@ -1,6 +1,6 @@
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use crate::{Decoder, DecodingError, Encoder, EncodingError};
+use crate::{DecodeBuffer, Decoder, DecodingError, Encoder, EncodingError};
 
 pub struct VarIntEncoder;
 
@@ -23,10 +23,10 @@ impl Encoder for VarIntEncoder {
     }
 }
 
-impl Decoder for VarIntEncoder {
+impl Decoder<'_> for VarIntEncoder {
     type Output = i32;
 
-    fn decode(mut r: impl std::io::Read) -> Result<Self::Output, DecodingError> {
+    fn decode(r: &mut DecodeBuffer) -> Result<Self::Output, DecodingError> {
         let mut value = 0;
         let mut length = 0;
 
