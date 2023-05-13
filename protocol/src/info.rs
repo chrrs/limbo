@@ -3,6 +3,7 @@ use std::{
     io::{Read, Write},
 };
 
+use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 
 use crate::{chat::Message, FieldReadError, FieldWriteError, PacketField};
@@ -33,7 +34,12 @@ impl ServerInfo {
             version,
             players,
             description: motd,
-            favicon: favicon.map(|data| format!("data:image/png;base64,{}", base64::encode(data))),
+            favicon: favicon.map(|data| {
+                format!(
+                    "data:image/png;base64,{}",
+                    general_purpose::STANDARD.encode(data)
+                )
+            }),
         }
     }
 }

@@ -43,10 +43,10 @@ impl PacketField for VarInt {
             let part = value as u8;
             value >>= 7;
             if value == 0 {
-                buffer.write_u8(part as u8 & 0x7f)?;
+                buffer.write_u8(part & 0x7f)?;
                 break Ok(());
             } else {
-                buffer.write_u8(part as u8 | 0x80)?;
+                buffer.write_u8(part | 0x80)?;
             }
         }
     }

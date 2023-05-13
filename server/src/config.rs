@@ -1,4 +1,4 @@
-use std::{fs::OpenOptions, io::Write, path::Path};
+use std::{fs::OpenOptions, io::Write, path::Path, str::Utf8Error};
 
 use anyhow::anyhow;
 use log::{warn, LevelFilter};
@@ -12,6 +12,9 @@ pub enum ConfigError {
 
     #[error("io error")]
     Io(#[from] std::io::Error),
+
+    #[error("file not correctly utf-8 encoded")]
+    InvalidUtf8(#[from] Utf8Error),
 
     #[error("deserialization error")]
     DeserializationError(#[from] toml::de::Error),
@@ -113,6 +116,7 @@ pub fn read(path: &Path) -> Result<Config, ConfigError> {
     }
 
     let bytes = std::fs::read(path)?;
-    let config = toml::from_slice(&bytes)?;
+    let string = core::str::from_utf8(&bytes)?;
+    let config = toml::from_str(string)?;
     Ok(config)
 }
