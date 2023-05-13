@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use proc_macro_error::{abort, proc_macro_error};
-use quote::quote;
+use quote::{quote, quote_spanned};
 use syn::{
     parse_macro_input, spanned::Spanned, Data, DataStruct, DeriveInput, Field, Fields, Ident, Meta,
 };
@@ -18,7 +18,7 @@ pub fn derive_decodable(input: TokenStream) -> TokenStream {
         if let Some(encoder) = find_encoder(field) {
             let name = &field.ident;
 
-            quote! {
+            quote_spanned! { encoder.span() =>
                 #name: <#encoder>::decode(r).map_err(|e| {
                     crate::DecodingError::Field {
                         name: stringify!(#name),
@@ -30,7 +30,7 @@ pub fn derive_decodable(input: TokenStream) -> TokenStream {
             let name = &field.ident;
             let ty = &field.ty;
 
-            quote! {
+            quote_spanned! { ty.span() =>
                 #name: <#ty>::decode(r).map_err(|e| {
                     crate::DecodingError::Field {
                         name: stringify!(#name),
@@ -42,7 +42,7 @@ pub fn derive_decodable(input: TokenStream) -> TokenStream {
     });
 
     let buffer_lifetime = if let Some(lifetime) = input.generics.lifetimes().next() {
-        quote! {<#lifetime>}
+        quote_spanned! { lifetime.span() => <#lifetime>}
     } else {
         quote! {<'_>}
     };
