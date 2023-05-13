@@ -4,4 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+byteorder = "1.4.3"
 protocol_derive = { path = "../protocol_derive" }
+thiserror = "1.0.40"
