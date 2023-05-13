@@ -10,16 +10,19 @@ pub enum ConfigError {
     #[error("file not found")]
     NotFound,
 
-    #[error("io error")]
-    Io(#[from] std::io::Error),
+    #[error("failed to read file")]
+    Read(#[source] std::io::Error),
+
+    #[error("failed to write file")]
+    Write(#[source] std::io::Error),
 
     #[error("file not correctly utf-8 encoded")]
     InvalidUtf8(#[from] Utf8Error),
 
-    #[error("deserialization error")]
+    #[error("file failed to deserialize")]
     DeserializationError(#[from] toml::de::Error),
 
-    #[error("serialization error")]
+    #[error("failed to serialize config")]
     SerializationError(#[from] toml::ser::Error),
 }
 
@@ -32,8 +35,12 @@ pub struct Config {
 impl Config {
     pub fn write(&self, path: &Path) -> Result<(), ConfigError> {
         let out = toml::to_string_pretty(self)?;
-        let mut file = OpenOptions::new().create_new(true).write(true).open(path)?;
-        file.write_all(out.as_bytes())?;
+        let mut file = OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(path)
+            .map_err(ConfigError::Write)?;
+        file.write_all(out.as_bytes()).map_err(ConfigError::Write)?;
         Ok(())
     }
 }
@@ -115,7 +122,7 @@ pub fn read(path: &Path) -> Result<Config, ConfigError> {
         return Err(ConfigError::NotFound);
     }
 
-    let bytes = std::fs::read(path)?;
+    let bytes = std::fs::read(path).map_err(ConfigError::Read)?;
     let string = core::str::from_utf8(&bytes)?;
     let config = toml::from_str(string)?;
     Ok(config)

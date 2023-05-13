@@ -31,28 +31,28 @@ pub enum ReceiveError {
     #[error("packet length decoding error")]
     PacketLengthEncode(#[from] protocol::FieldReadError),
 
-    #[error("decoding error")]
+    #[error("failed to decode packet")]
     Decode(#[from] protocol::ReadError),
 
     #[error("failed to read from stream")]
     Read(#[from] std::io::Error),
 
-    #[error("decompression error")]
+    #[error("failed to decompress received data")]
     Decompression(#[source] std::io::Error),
 }
 
 #[derive(Debug, Error)]
 pub enum SendError {
-    #[error("packet length encoding error")]
+    #[error("failed to encode packet length")]
     PacketLengthEncode(#[from] protocol::FieldWriteError),
 
-    #[error("encoding error")]
+    #[error("failed to encode packet")]
     Encode(#[from] protocol::WriteError),
 
     #[error("failed to write to stream")]
     Write(#[from] std::io::Error),
 
-    #[error("compressioon error")]
+    #[error("failed to compress packet")]
     Compression(#[source] std::io::Error),
 }
 
