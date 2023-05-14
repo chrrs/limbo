@@ -44,6 +44,12 @@ pub enum DecodingError {
 
     #[error("failed to convert bytes to string")]
     StrConversion(#[source] Utf8Error),
+
+    #[error("invalid enum variant {key:?}")]
+    InvalidEnumVariant { key: String },
+
+    #[error("invalid packet id {0}")]
+    InvalidPacketId(i32),
 }
 
 pub trait Decodable<'a>: Sized {

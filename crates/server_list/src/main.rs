@@ -1,8 +1,8 @@
 use std::{io::Read, net::TcpListener};
 
 use protocol::{
-    fields::varint::VarIntEncoder, packet::client::handshake::Handshake, Decodable, DecodeBuffer,
-    Decoder,
+    fields::varint::VarIntEncoder, packet::client::handshake::HandshakePacket, Decodable,
+    DecodeBuffer, Decoder,
 };
 
 fn main() {
@@ -25,9 +25,7 @@ fn main() {
             .expect("failed to read packet");
 
         let mut decode_buffer = DecodeBuffer::new(&buffer[decode_buffer.position()..]);
-        VarIntEncoder::decode(&mut decode_buffer).expect("failed to decode packet id");
-        let handshake = Handshake::decode(&mut decode_buffer);
 
-        println!("{handshake:?}")
+        println!("{:?}", HandshakePacket::decode(&mut decode_buffer));
     }
 }
