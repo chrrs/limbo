@@ -1,8 +1,10 @@
-use std::{io::Read, net::TcpListener};
+use std::{
+    io::{Cursor, Read},
+    net::TcpListener,
+};
 
 use protocol::{
-    fields::varint::VarIntEncoder, packet::client::handshake::HandshakePacket, Decodable,
-    DecodeBuffer, Decoder,
+    fields::varint::VarIntEncoder, packet::client::handshake::HandshakePacket, Decodable, Decoder,
 };
 
 fn main() {
@@ -15,17 +17,17 @@ fn main() {
         stream
             .peek(&mut buffer)
             .expect("failed to peek for packet length");
-        let mut decode_buffer = DecodeBuffer::new(&buffer[..]);
-        let length = VarIntEncoder::decode(&mut decode_buffer)
-            .expect("failed to decode packet length") as usize;
+        let mut cursor = Cursor::new(&buffer[..]);
+        let length =
+            VarIntEncoder::decode(&mut cursor).expect("failed to decode packet length") as usize;
 
-        let mut buffer = vec![0; length + decode_buffer.position()];
+        let mut buffer = vec![0; length + cursor.position() as usize];
         stream
             .read_exact(&mut buffer)
             .expect("failed to read packet");
 
-        let mut decode_buffer = DecodeBuffer::new(&buffer[decode_buffer.position()..]);
+        let mut cursor = Cursor::new(&buffer[cursor.position() as usize..]);
 
-        println!("{:?}", HandshakePacket::decode(&mut decode_buffer));
+        println!("{:?}", HandshakePacket::decode(&mut cursor));
     }
 }

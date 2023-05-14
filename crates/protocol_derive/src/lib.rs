@@ -41,18 +41,12 @@ pub fn derive_decodable(input: TokenStream) -> TokenStream {
         }
     });
 
-    let buffer_lifetime = if let Some(lifetime) = input.generics.lifetimes().next() {
-        quote_spanned! { lifetime.span() => <#lifetime>}
-    } else {
-        quote! {<'_>}
-    };
-
     let name = input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     TokenStream::from(quote! {
-        impl #impl_generics crate::Decodable #buffer_lifetime for #name #ty_generics #where_clause {
-            fn decode(r: &mut crate::DecodeBuffer #buffer_lifetime) -> Result<Self, crate::DecodingError> {
+        impl #impl_generics crate::Decodable for #name #ty_generics #where_clause {
+            fn decode(r: &mut impl std::io::Read) -> Result<Self, crate::DecodingError> {
                 #[allow(unused_imports)]
                 use crate::{Decodable, Decoder};
 

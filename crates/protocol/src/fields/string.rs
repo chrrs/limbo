@@ -1,14 +1,12 @@
-use crate::{Decodable, DecodeBuffer, Decoder, Encodable, Encoder};
+use crate::{Decodable, Decoder, Encodable, Encoder};
 
 use super::varint::VarIntEncoder;
 
 impl Encodable for &'_ str {
-    fn encode(&self, mut w: impl std::io::Write) -> Result<(), crate::EncodingError> {
-        VarIntEncoder::encode(self.len() as i32, &mut w).map_err(|e| {
-            crate::EncodingError::Field {
-                name: "length",
-                source: Box::new(e),
-            }
+    fn encode(&self, w: &mut impl std::io::Write) -> Result<(), crate::EncodingError> {
+        VarIntEncoder::encode(self.len() as i32, w).map_err(|e| crate::EncodingError::Field {
+            name: "length",
+            source: Box::new(e),
         })?;
 
         w.write_all(self.as_bytes())
@@ -18,19 +16,16 @@ impl Encodable for &'_ str {
     }
 }
 
-impl<'a> Decodable<'a> for &'a str {
-    fn decode(r: &mut DecodeBuffer<'a>) -> Result<Self, crate::DecodingError> {
+impl Decodable for String {
+    fn decode(r: &mut impl std::io::Read) -> Result<Self, crate::DecodingError> {
         let length = VarIntEncoder::decode(r).map_err(|e| crate::DecodingError::Field {
             name: "length",
             source: Box::new(e),
         })? as usize;
 
-        let slice = r.slice();
-        if slice.len() < length {
-            return Err(crate::DecodingError::UnexpectedEoi);
-        }
+        let mut buf = vec![0; length];
+        r.read_exact(&mut buf)?;
 
-        r.advance(length);
-        core::str::from_utf8(&slice[..length]).map_err(crate::DecodingError::StrConversion)
+        String::from_utf8(buf).map_err(crate::DecodingError::StringConversion)
     }
 }
