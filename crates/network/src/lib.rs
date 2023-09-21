@@ -1,17 +1,29 @@
 use std::{fmt, io::Cursor};
 
 use bytes::{Buf, BytesMut};
-use protocol::{fields::varint::VarIntEncoder, Decodable, Decoder, DecodingError};
+use protocol::{
+    fields::varint::VarIntEncoder, Decodable, Decoder, DecodingError, Encodable, Encoder,
+    EncodingError,
+};
 use thiserror::Error;
 use tokio::{
-    io::{AsyncReadExt, BufWriter},
+    io::{AsyncReadExt, AsyncWriteExt, BufWriter},
     net::TcpStream,
 };
 use tracing::trace;
 
 #[derive(Debug, Error)]
+pub enum SendError {
+    #[error("failed to encode packet")]
+    Encode(#[source] EncodingError),
+
+    #[error("failed to write to stream")]
+    Write(#[source] std::io::Error),
+}
+
+#[derive(Debug, Error)]
 pub enum ReceiveError {
-    #[error("couldn't read packet length")]
+    #[error("couldn't decode packet length")]
     PacketLengthError(#[source] DecodingError),
 
     #[error("failed to decode packet")]
@@ -38,6 +50,35 @@ impl Connection {
             stream: BufWriter::new(stream),
             receive_buffer: BytesMut::new(),
         }
+    }
+
+    pub async fn send_packet<P: fmt::Debug + Encodable>(
+        &mut self,
+        packet: P,
+    ) -> Result<(), SendError> {
+        let mut packet_buf = Vec::new();
+        packet.encode(&mut packet_buf).map_err(SendError::Encode)?;
+
+        // FIXME: There is no possibility of the vec growing, optimization?
+        let mut length_buf = Vec::with_capacity(5);
+        VarIntEncoder::encode(packet_buf.len() as i32, &mut length_buf)
+            .map_err(SendError::Encode)?;
+
+        self.stream
+            .write_all(&length_buf)
+            .await
+            .map_err(SendError::Write)?;
+
+        self.stream
+            .write_all(&packet_buf)
+            .await
+            .map_err(SendError::Write)?;
+
+        self.stream.flush().await.map_err(SendError::Write)?;
+
+        trace!("sent packet: {packet:?}");
+
+        Ok(())
     }
 
     pub async fn receive_packet<P: fmt::Debug + Decodable>(&mut self) -> Result<P, ReceiveError> {

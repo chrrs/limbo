@@ -1,8 +1,23 @@
 use network::Connection;
-use protocol::packet::client::{handshake::ClientHandshakePacket, status::ClientStatusPacket};
+use protocol::{
+    fields::varint::VarIntEncoder,
+    packet::client::{handshake::ClientHandshakePacket, status::ClientStatusPacket},
+    Encodable, Encoder,
+};
 use tokio::{net::TcpListener, select, signal};
 use tracing::{debug, error, info, Level};
 use tracing_subscriber::FmtSubscriber;
+
+#[derive(Debug)]
+struct TestResponse;
+
+impl Encodable for TestResponse {
+    fn encode(&self, w: &mut impl std::io::Write) -> Result<(), protocol::EncodingError> {
+        VarIntEncoder::encode(0, w)?;
+        r#"{"version":{"name":"Limbo","protocol":999999},"description":{"text":"A Limbo Server"}}"#
+            .encode(w)
+    }
+}
 
 #[tokio::main]
 async fn main() {
@@ -29,9 +44,11 @@ async fn main() {
                         let mut connection = Connection::new(stream);
 
                         let _ = connection.receive_packet::<ClientHandshakePacket>().await
-                            .map_err(|err| error!("error while receiving handshake packet: {err}"));
+                            .map_err(|err| error!("error while receiving handshake: {err}"));
                         let _ = connection.receive_packet::<ClientStatusPacket>().await
-                            .map_err(|err| error!("error while receiving status packet: {err}"));
+                            .map_err(|err| error!("error while receiving status request: {err}"));
+                        let _ = connection.send_packet(TestResponse).await
+                            .map_err(|err| error!("error while sending status response: {err}"));
                     },
                     Err(err) => error!("failed to accept connection: {err}"),
                 }
