@@ -10,6 +10,24 @@ use syn::{
 pub fn derive_decodable(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
+    if let Data::Struct(DataStruct {
+        fields: Fields::Unit,
+        ..
+    }) = input.data
+    {
+        let name = input.ident;
+        let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+        return TokenStream::from(quote! {
+            impl #impl_generics crate::Decodable for #name #ty_generics #where_clause {
+                #[inline]
+                fn decode(r: &mut impl std::io::Read) -> Result<Self, crate::DecodingError> {
+                    Ok(#name)
+                }
+            }
+        });
+    }
+
     let Data::Struct(DataStruct { fields: Fields::Named(mut fields), .. }) = input.data else {
         abort!(input.ident, "Decodable is only derivable for structs");
     };
