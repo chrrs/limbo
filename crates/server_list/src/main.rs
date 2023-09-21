@@ -1,5 +1,5 @@
 use network::Connection;
-use protocol::packet::client::handshake::ClientHandshakePacket;
+use protocol::packet::client::{handshake::ClientHandshakePacket, status::ClientStatusPacket};
 use tokio::{net::TcpListener, select, signal};
 use tracing::{debug, error, info, Level};
 use tracing_subscriber::FmtSubscriber;
@@ -28,13 +28,10 @@ async fn main() {
                         debug!("new connection from {address}");
                         let mut connection = Connection::new(stream);
 
-                        match connection.receive_packet::<ClientHandshakePacket>().await {
-                            Ok(_packet) => {},
-                            Err(err) => {
-                                error!("error while receiving packet: {err}");
-                                break;
-                            }
-                        }
+                        let _ = connection.receive_packet::<ClientHandshakePacket>().await
+                            .map_err(|err| error!("error while receiving handshake packet: {err}"));
+                        let _ = connection.receive_packet::<ClientStatusPacket>().await
+                            .map_err(|err| error!("error while receiving status packet: {err}"));
                     },
                     Err(err) => error!("failed to accept connection: {err}"),
                 }
