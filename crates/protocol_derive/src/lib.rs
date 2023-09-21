@@ -5,6 +5,81 @@ use syn::{
     parse_macro_input, spanned::Spanned, Data, DataStruct, DeriveInput, Field, Fields, Ident, Meta,
 };
 
+#[proc_macro_derive(Encodable, attributes(with))]
+#[proc_macro_error]
+pub fn derive_encodable(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    if let Data::Struct(DataStruct {
+        fields: Fields::Unit,
+        ..
+    }) = input.data
+    {
+        let name = input.ident;
+        let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+        return TokenStream::from(quote! {
+            impl #impl_generics crate::Encodable for #name #ty_generics #where_clause {
+                #[inline]
+                fn encode(&self, w: &mut impl std::io::Write) -> Result<(), crate::EncodingError> {
+                    Ok(())
+                }
+            }
+        });
+    }
+
+    let Data::Struct(DataStruct {
+        fields: Fields::Named(mut fields),
+        ..
+    }) = input.data
+    else {
+        abort!(input.ident, "Encodable is only derivable for structs");
+    };
+
+    let fields = fields.named.iter_mut().map(|field| {
+        if let Some(encoder) = find_encoder(field) {
+            let name = &field.ident;
+
+            quote_spanned! { encoder.span() =>
+                <#encoder>::encode(self.#name, w).map_err(|e| {
+                    crate::EncodingError::Field {
+                        name: stringify!(#name),
+                        source: Box::new(e),
+                    }
+                })?;
+            }
+        } else {
+            let name = &field.ident;
+            let ty = &field.ty;
+
+            quote_spanned! { ty.span() =>
+                self.#name.encode(w).map_err(|e| {
+                    crate::EncodingError::Field {
+                        name: stringify!(#name),
+                        source: Box::new(e),
+                    }
+                })?;
+            }
+        }
+    });
+
+    let name = input.ident;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+    TokenStream::from(quote! {
+        impl #impl_generics crate::Encodable for #name #ty_generics #where_clause {
+            fn encode(&self, w: &mut impl std::io::Write) -> Result<(), crate::EncodingError> {
+                #[allow(unused_imports)]
+                use crate::{Encodable, Encoder};
+
+                #(#fields)*
+                Ok(())
+            }
+        }
+
+    })
+}
+
 #[proc_macro_derive(Decodable, attributes(with))]
 #[proc_macro_error]
 pub fn derive_decodable(input: TokenStream) -> TokenStream {
@@ -28,7 +103,11 @@ pub fn derive_decodable(input: TokenStream) -> TokenStream {
         });
     }
 
-    let Data::Struct(DataStruct { fields: Fields::Named(mut fields), .. }) = input.data else {
+    let Data::Struct(DataStruct {
+        fields: Fields::Named(mut fields),
+        ..
+    }) = input.data
+    else {
         abort!(input.ident, "Decodable is only derivable for structs");
     };
 
