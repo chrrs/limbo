@@ -3,14 +3,14 @@ use protocol_derive::Decodable;
 use crate::{fields::varint::VarIntEncoder, Decodable, Decoder};
 
 #[derive(Debug)]
-pub enum HandshakePacket {
+pub enum ClientHandshakePacket {
     Handshake(Handshake),
 }
 
-impl Decodable for HandshakePacket {
+impl Decodable for ClientHandshakePacket {
     fn decode(r: &mut impl std::io::Read) -> Result<Self, crate::DecodingError> {
         match VarIntEncoder::decode(r)? {
-            0 => Handshake::decode(r).map(HandshakePacket::Handshake),
+            0 => Handshake::decode(r).map(ClientHandshakePacket::Handshake),
             id => Err(crate::DecodingError::InvalidPacketId(id)),
         }
     }

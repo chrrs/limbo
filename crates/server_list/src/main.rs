@@ -1,33 +1,47 @@
-use std::{
-    io::{Cursor, Read},
-    net::TcpListener,
-};
+use network::Connection;
+use protocol::packet::client::handshake::ClientHandshakePacket;
+use tokio::{net::TcpListener, select, signal};
+use tracing::{debug, error, info, Level};
+use tracing_subscriber::FmtSubscriber;
 
-use protocol::{
-    fields::varint::VarIntEncoder, packet::client::handshake::HandshakePacket, Decodable, Decoder,
-};
+#[tokio::main]
+async fn main() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::TRACE)
+        .finish();
 
-fn main() {
-    let listener = TcpListener::bind("0.0.0.0:25565").expect("failed to open TCP listener");
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("setting default tracing subscriber failed");
 
-    for stream in listener.incoming() {
-        let mut stream = stream.expect("failed to open stream");
+    let addr = "0.0.0.0:25565";
+    let listener = TcpListener::bind(addr)
+        .await
+        .expect("failed to open TCP listener");
 
-        let mut buffer = [0; 5];
-        stream
-            .peek(&mut buffer)
-            .expect("failed to peek for packet length");
-        let mut cursor = Cursor::new(&buffer[..]);
-        let length =
-            VarIntEncoder::decode(&mut cursor).expect("failed to decode packet length") as usize;
+    info!("listening on {addr} for new connections");
 
-        let mut buffer = vec![0; length + cursor.position() as usize];
-        stream
-            .read_exact(&mut buffer)
-            .expect("failed to read packet");
+    loop {
+        select! {
+            res = listener.accept() => {
+                match res {
+                    Ok((stream, address)) => {
+                        debug!("new connection from {address}");
+                        let mut connection = Connection::new(stream);
 
-        let mut cursor = Cursor::new(&buffer[cursor.position() as usize..]);
-
-        println!("{:?}", HandshakePacket::decode(&mut cursor));
+                        match connection.receive_packet::<ClientHandshakePacket>().await {
+                            Ok(_packet) => {},
+                            Err(err) => {
+                                error!("error while receiving packet: {err}");
+                                break;
+                            }
+                        }
+                    },
+                    Err(err) => error!("failed to accept connection: {err}"),
+                }
+            }
+            _ = signal::ctrl_c() => break
+        }
     }
+
+    info!("shutting down");
 }
